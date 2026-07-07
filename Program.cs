@@ -12,9 +12,8 @@ using RotationDating.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var port = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrWhiteSpace(port))
-    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -47,7 +46,14 @@ builder.Services.AddScoped<SeatMatchingService>();
 var dataDir = Environment.GetEnvironmentVariable("DATA_DIR");
 if (string.IsNullOrWhiteSpace(dataDir))
     dataDir = Directory.Exists("/data") ? "/data" : builder.Environment.ContentRootPath;
-Directory.CreateDirectory(dataDir);
+try
+{
+    Directory.CreateDirectory(dataDir);
+}
+catch
+{
+    dataDir = builder.Environment.ContentRootPath;
+}
 var dbPath = Path.Combine(dataDir, "rotationdating.db");
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
