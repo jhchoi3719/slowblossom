@@ -1,0 +1,269 @@
+@page "/participants"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>참가자 관리</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="@_homeUrl" class="back-link">← 메뉴</a>
+        <h1>참가자 관리</h1>
+        <p class="subtitle">@_pageSubtitle</p>
+    </header>
+
+    @if (_venue is null)
+    {
+        <div class="empty-state">
+            <p>장소를 먼저 선택해 주세요.</p>
+            <a class="btn btn-primary" href="/home">장소 선택으로 이동</a>
+        </div>
+    }
+    else
+    {
+        <div class="date-tabs">
+            @foreach (var evt in _events)
+            {
+                var confirmedCount = evt.Applications.Count(a => a.IsConfirmed);
+                <a class="date-tab @(EventId == evt.Id ? "active" : "")"
+                   href="@GetPageUrl(evt.Id)">
+                    <span class="tab-date">@evt.TabLabel</span>
+                    <span class="tab-count">@(confirmedCount)명</span>
+                </a>
+            }
+            @if (_venue == EventVenue.UnoCoffee)
+            {
+                <a class="date-tab add-tab" href="@GetPageUrl(extraQuery: "addDate=true")">
+                    + 날짜
+                </a>
+            }
+        </div>
+
+        @if (AddDate && _venue == EventVenue.UnoCoffee)
+        {
+            <div class="card form-card">
+                <h2>행사 날짜 추가 · 우노커피</h2>
+                <form method="post" action="/participants/add-date">
+                    <input type="hidden" name="venue" value="@VenueHelper.UnoParam" />
+                    <div class="form-grid">
+                        <label>
+                            날짜
+                            <input type="date" name="eventDate" class="input"
+                                   value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                        </label>
+                        <label>
+                            행사명 (선택)
+                            <input type="text" name="title" class="input" placeholder="예: 7월 로테이션 소개팅" />
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">추가</button>
+                        <a class="btn btn-secondary" href="@GetPageUrl()">취소</a>
+                    </div>
+                </form>
+                @if (!string.IsNullOrEmpty(_formError))
+                {
+                    <p class="error-text">@_formError</p>
+                }
+            </div>
+        }
+
+        @if (_selectedEvent is null)
+        {
+            <div class="empty-state">
+                <p>등록된 행사가 없습니다.</p>
+                @if (_venue == EventVenue.UnoCoffee)
+                {
+                    <p>위 <strong>+ 날짜</strong> 버튼으로 행사 날짜를 먼저 추가하세요.</p>
+                }
+                else
+                {
+                    <p><strong>참가자 신청서</strong>에서 가능일 설문 행사를 추가하세요.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="summary-bar">
+                <span class="summary-item male">남 @(_maleCount)명</span>
+                <span class="summary-item female">여 @(_femaleCount)명</span>
+                <span class="summary-item total">총 @(_confirmedApplications.Count)명</span>
+                @if (_selectedEvent.Kind == EventKind.DatePoll)
+                {
+                    <span class="summary-item poll">가능일 설문</span>
+                }
+                <span class="summary-date">@_selectedEvent.FormattedDate</span>
+                <form method="post" action="/events/delete" class="inline-form summary-delete-form"
+                      onsubmit="return confirm('이 날짜와 등록된 참가자·신청서가 모두 삭제됩니다. 계속할까요?');">
+                    <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                    <input type="hidden" name="returnPage" value="participants" />
+                    <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
+                    <button type="submit" class="btn btn-sm btn-danger">날짜 삭제</button>
+                </form>
+            </div>
+
+            @if (_confirmedApplications.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>확정된 참가자가 없습니다.</p>
+                    <p><strong>참가자 신청서</strong>에서 연락 후 <strong>확정</strong> 버튼을 눌러주세요.</p>
+                </div>
+            }
+            else
+            {
+                <div class="participant-list">
+                    @foreach (var app in _confirmedApplications)
+                    {
+                        <div class="participant-card application-card @GetGenderClass(app.Gender)">
+                            <div class="participant-header">
+                                <span class="participant-name">@app.Name</span>
+                                @if (!string.IsNullOrWhiteSpace(app.Gender))
+                                {
+                                    <span class="participant-tag gender-tag-@(app.Gender == "남" ? "male" : "female")">@app.Gender</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(app.BirthDate))
+                                {
+                                    <span class="participant-tag">@app.BirthDate</span>
+                                }
+                                <span class="confirm-badge">확정</span>
+                                @{
+                                    var loginDate = EventDateHelper.GetEffectiveLoginDate(_selectedEvent);
+                                }
+                                @if (loginDate.HasValue)
+                                {
+                                    <span class="participant-tag login-id-tag">@ParticipantAuthService.FormatLoginId(app.Name, loginDate.Value)</span>
+                                }
+                            </div>
+                            <div class="participant-body">
+                                @if (!string.IsNullOrWhiteSpace(app.Phone))
+                                {
+                                    <div class="info-row">
+                                        <span class="label">연락처</span>
+                                        <a href="tel:@app.Phone" class="value link">@app.Phone</a>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(app.Residence))
+                                {
+                                    <div class="info-row">
+                                        <span class="label">거주지</span>
+                                        <span class="value">@app.Residence</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(app.Workplace))
+                                {
+                                    <div class="info-row">
+                                        <span class="label">직장</span>
+                                        <span class="value">@app.Workplace</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(app.PreferredAgeRange))
+                                {
+                                    <div class="info-row">
+                                        <span class="label">원하는 연령대</span>
+                                        <span class="value">@app.PreferredAgeRange</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(app.Interests))
+                                {
+                                    <div class="info-row">
+                                        <span class="label">관심사</span>
+                                        <span class="value">@app.Interests</span>
+                                    </div>
+                                }
+                                <div class="info-row">
+                                    <span class="label">음주</span>
+                                    <span class="value ox-value">@ParticipantApplication.OxLabel(app.Drinking)</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">흡연</span>
+                                    <span class="value ox-value">@ParticipantApplication.OxLabel(app.Smoking)</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? EventId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool AddDate { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "venue")]
+    public string? Venue { get; set; }
+
+    private EventVenue? _venue;
+    private string _homeUrl = "/home";
+    private string _pageSubtitle = "";
+
+    private List<Event> _events = [];
+    private Event? _selectedEvent;
+    private List<ParticipantApplication> _confirmedApplications = [];
+
+    private string _formError => Error switch
+    {
+        "duplicate" => "이미 등록된 날짜입니다.",
+        _ => ""
+    };
+
+    private int _maleCount => _confirmedApplications.Count(a => a.Gender == "남");
+    private int _femaleCount => _confirmedApplications.Count(a => a.Gender == "여");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _venue = VenueHelper.TryParse(Venue);
+        _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
+        _pageSubtitle = _venue.HasValue
+            ? $"{VenueHelper.DisplayName(_venue.Value)} · 신청서에서 확정한 참가자만 표시됩니다"
+            : "장소를 선택한 뒤 참가자를 관리합니다";
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var allEvents = await db.Events
+            .Include(e => e.Applications)
+            .Include(e => e.CandidateDates)
+            .OrderBy(e => e.EventDate)
+            .ToListAsync();
+
+        _events = _venue.HasValue
+            ? VenueHelper.FilterByVenue(allEvents, _venue.Value).ToList()
+            : [];
+
+        if (EventId.HasValue)
+            _selectedEvent = _events.FirstOrDefault(e => e.Id == EventId);
+        else if (_events.Count > 0)
+        {
+            _selectedEvent = _events[0];
+            EventId = _selectedEvent.Id;
+        }
+
+        _confirmedApplications = _selectedEvent?.Applications
+            .Where(a => a.IsConfirmed)
+            .OrderBy(a => a.Gender)
+            .ThenBy(a => a.Name)
+            .ToList() ?? [];
+    }
+
+    private string GetPageUrl(int? eventId = null, string? extraQuery = null) =>
+        _venue.HasValue
+            ? VenueHelper.AdminPageUrl("/participants", _venue.Value, eventId, extraQuery)
+            : "/participants";
+
+    private static string GetGenderClass(string? gender) => gender switch
+    {
+        "남" => "card-male",
+        "여" => "card-female",
+        _ => ""
+    };
+}

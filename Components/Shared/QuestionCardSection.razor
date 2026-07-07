@@ -1,0 +1,34 @@
+@using RotationDating.Web.Services
+@inject QuestionCardService QuestionCards
+
+<div class="question-card-wrap">
+    <div class="question-card">
+        <span class="question-label">오늘의 질문</span>
+        <p class="question-text">@_question</p>
+    </div>
+
+    @if (_questionCount > 0)
+    {
+        <a href="@($"{BasePath}?n={_nextSeed}")" class="btn btn-primary question-next-btn">다른 질문 보기</a>
+        <p class="question-counter">@(_questionCount)개의 질문 중 하나</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string BasePath { get; set; } = "/questions";
+
+    [Parameter]
+    public int? N { get; set; }
+
+    private string _question = "";
+    private int _questionCount;
+    private int _nextSeed;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var seed = N ?? Environment.TickCount;
+        (_question, _questionCount) = await QuestionCards.GetRandomAsync(seed);
+        _nextSeed = seed + 1;
+    }
+}

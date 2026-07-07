@@ -1,0 +1,851 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RotationDating.Web.Components;
+using RotationDating.Web.Data;
+using RotationDating.Web.Models;
+using RotationDating.Web.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+builder.Services.AddRazorComponents();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuthenticationStateProvider, HttpContextAuthenticationStateProvider>();
+builder.Services.AddCascadingAuthenticationState();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/";
+        options.Cookie.Name = "RotationDating.Auth";
+        options.ExpireTimeSpan = TimeSpan.FromHours(12);
+        options.SlidingExpiration = true;
+        if (!builder.Environment.IsDevelopment())
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddAntiforgery();
+builder.Services.AddScoped<QuestionCardService>();
+builder.Services.AddHttpClient(nameof(SeatMatchingService));
+builder.Services.AddScoped<SeatMatchingService>();
+
+var dataDir = Environment.GetEnvironmentVariable("DATA_DIR");
+if (string.IsNullOrWhiteSpace(dataDir))
+    dataDir = Directory.Exists("/data") ? "/data" : builder.Environment.ContentRootPath;
+Directory.CreateDirectory(dataDir);
+var dbPath = Path.Combine(dataDir, "rotationdating.db");
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
+    options.UseSqlite($"Data Source={dbPath}"));
+
+var app = builder.Build();
+
+app.UseForwardedHeaders();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();
+    await DatabaseInitializer.InitializeAsync(db);
+}
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+}
+
+app.UseStaticFiles();
+app.UseAntiforgery();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/ping", () => Results.Text("ok", "text/plain"));
+
+app.MapPost("/login", async ([FromForm] string? username, HttpContext context, IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    if (string.IsNullOrWhiteSpace(username))
+        return InvalidLoginResponse();
+
+    var name = username.Trim();
+
+    if (AuthRoles.IsAdmin(name))
+    {
+        var adminClaims = new[]
+        {
+            new Claim(ClaimTypes.Name, name),
+            new Claim(ClaimTypes.Role, AuthRoles.Admin)
+        };
+        var adminIdentity = new ClaimsIdentity(adminClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await context.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(adminIdentity));
+
+        return Results.Redirect("/home");
+    }
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+    if (name is "테스트우노" or "테스트수성")
+    {
+        var targetVenue = name == "테스트수성"
+            ? EventVenue.HotelSuseongSquare
+            : EventVenue.UnoCoffee;
+        var targetKind = VenueHelper.ToEventKind(targetVenue);
+
+        var testApplication = await db.Applications
+            .Include(a => a.Event)
+            .Where(a => a.IsConfirmed && a.Event != null && a.Event.Kind == targetKind)
+            .OrderByDescending(a => a.Id)
+            .FirstOrDefaultAsync();
+
+        var testEvent = testApplication?.Event
+            ?? await db.Events
+                .AsNoTracking()
+                .Where(e => e.Kind == targetKind)
+                .OrderByDescending(e => e.EventDate)
+                .FirstOrDefaultAsync();
+
+        if (testEvent is null)
+        {
+            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return InvalidLoginResponse();
+        }
+
+        var testVenue = VenueHelper.FromEventKind(testEvent.Kind);
+        var testEffectiveDate = EventDateHelper.GetEffectiveLoginDate(testEvent);
+        var testClaims = new[]
+        {
+            new Claim(ClaimTypes.Name, name),
+            new Claim(ClaimTypes.Role, AuthRoles.Participant),
+            new Claim(AuthClaims.EventId, testEvent.Id.ToString()),
+            new Claim(AuthClaims.EventTitle, testEvent.Title),
+            new Claim(AuthClaims.ApplicationId, (testApplication?.Id ?? 0).ToString()),
+            new Claim(AuthClaims.Gender, testApplication?.Gender ?? "남"),
+            new Claim(AuthClaims.VenueLabel, VenueHelper.DisplayName(testVenue)),
+            new Claim(AuthClaims.EventDateLabel, testEffectiveDate?.ToString("yyyy년 M월 d일 (ddd)") ?? "")
+        };
+
+        var testIdentity = new ClaimsIdentity(testClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await context.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(testIdentity));
+
+        return Results.Redirect("/welcome");
+    }
+
+    var application = await ParticipantAuthService.FindConfirmedParticipantAsync(db, name);
+
+    if (application?.Event is null)
+    {
+        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return InvalidLoginResponse();
+    }
+
+    var venue = VenueHelper.FromEventKind(application.Event.Kind);
+    var effectiveDate = EventDateHelper.GetEffectiveLoginDate(application.Event);
+
+    var participantClaims = new[]
+    {
+        new Claim(ClaimTypes.Name, application.Name.Trim()),
+        new Claim(ClaimTypes.Role, AuthRoles.Participant),
+        new Claim(AuthClaims.EventId, application.EventId.ToString()),
+        new Claim(AuthClaims.EventTitle, application.Event.Title),
+        new Claim(AuthClaims.ApplicationId, application.Id.ToString()),
+        new Claim(AuthClaims.Gender, application.Gender ?? ""),
+        new Claim(AuthClaims.VenueLabel, VenueHelper.DisplayName(venue)),
+        new Claim(AuthClaims.EventDateLabel, effectiveDate?.ToString("yyyy년 M월 d일 (ddd)") ?? "")
+    };
+    var participantIdentity = new ClaimsIdentity(participantClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+    await context.SignInAsync(
+        CookieAuthenticationDefaults.AuthenticationScheme,
+        new ClaimsPrincipal(participantIdentity));
+
+    return Results.Redirect("/welcome");
+}).DisableAntiforgery();
+
+app.MapGet("/force-logout", async (HttpContext context) =>
+{
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return InvalidLoginResponse();
+});
+
+app.MapPost("/logout", async (HttpContext context) =>
+{
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.Redirect("/");
+}).DisableAntiforgery();
+
+app.MapPost("/participants/delete", async ([FromForm] int participantId, [FromForm] int eventId, IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var participant = await db.Participants.FindAsync(participantId);
+    if (participant is not null)
+    {
+        db.Participants.Remove(participant);
+        await db.SaveChangesAsync();
+    }
+
+    await using var db2 = await dbFactory.CreateDbContextAsync();
+    var kind = await db2.Events.AsNoTracking()
+        .Where(e => e.Id == eventId)
+        .Select(e => e.Kind)
+        .FirstOrDefaultAsync();
+    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", VenueHelper.FromEventKind(kind), eventId));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/participants/add-date", async (
+    [FromForm] DateTime eventDate,
+    [FromForm] string? title,
+    [FromForm] string? venue,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var dateOnly = eventDate.Date;
+    await using var db = await dbFactory.CreateDbContextAsync();
+
+    if (await db.Events.AnyAsync(e => e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
+        return Results.Redirect(ParticipantsAddDateUrl("duplicate"));
+
+    var eventTitle = string.IsNullOrWhiteSpace(title)
+        ? $"{dateOnly:M월 d일} 로테이션 소개팅"
+        : title.Trim();
+
+    var evt = new Event
+    {
+        Title = eventTitle,
+        Kind = EventKind.FixedDate,
+        EventDate = dateOnly.AddHours(18),
+        Location = VenueHelper.LocationName(EventVenue.UnoCoffee)
+    };
+
+    db.Events.Add(evt);
+    await db.SaveChangesAsync();
+    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", EventVenue.UnoCoffee, evt.Id));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/participants/save", async (
+    [FromForm] int eventId,
+    [FromForm] int? participantId,
+    [FromForm] string? name,
+    [FromForm] Gender gender,
+    [FromForm] int? age,
+    [FromForm] string? phone,
+    [FromForm] string? occupation,
+    [FromForm] string? memo,
+    [FromForm] ParticipantStatus status,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    if (string.IsNullOrWhiteSpace(name))
+        return Results.Redirect($"/participants?eventId={eventId}&{(participantId.HasValue ? $"editId={participantId}" : "addParticipant=true")}&error=name");
+
+    if (string.IsNullOrWhiteSpace(phone))
+        return Results.Redirect($"/participants?eventId={eventId}&{(participantId.HasValue ? $"editId={participantId}" : "addParticipant=true")}&error=phone");
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+
+    if (participantId.HasValue)
+    {
+        var existing = await db.Participants.FindAsync(participantId.Value);
+        if (existing is null)
+            return Results.Redirect($"/participants?eventId={eventId}");
+
+        existing.Name = name.Trim();
+        existing.Gender = gender;
+        existing.Age = age;
+        existing.Phone = phone.Trim();
+        existing.Occupation = string.IsNullOrWhiteSpace(occupation) ? null : occupation.Trim();
+        existing.Memo = string.IsNullOrWhiteSpace(memo) ? null : memo.Trim();
+        existing.Status = status;
+    }
+    else
+    {
+        db.Participants.Add(new Participant
+        {
+            EventId = eventId,
+            Name = name.Trim(),
+            Gender = gender,
+            Age = age,
+            Phone = phone.Trim(),
+            Occupation = string.IsNullOrWhiteSpace(occupation) ? null : occupation.Trim(),
+            Memo = string.IsNullOrWhiteSpace(memo) ? null : memo.Trim(),
+            Status = status
+        });
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Redirect($"/participants?eventId={eventId}");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/delete", async ([FromForm] int applicationId, [FromForm] int eventId, IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications.FindAsync(applicationId);
+    if (application is not null)
+    {
+        db.Applications.Remove(application);
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/add-date", async (
+    [FromForm] string? eventKind,
+    [FromForm] string? venue,
+    [FromForm] DateTime? eventDate,
+    [FromForm] string? title,
+    [FromForm] DateTime[]? candidateDates,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var parsedVenue = VenueHelper.TryParse(venue);
+    var kind = eventKind == "poll" ? EventKind.DatePoll : EventKind.FixedDate;
+    if (parsedVenue.HasValue)
+        kind = VenueHelper.ToEventKind(parsedVenue.Value);
+
+    if (kind == EventKind.DatePoll)
+    {
+        var dates = (candidateDates ?? [])
+            .Select(d => d.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        if (dates.Count < 2)
+            return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.SuseongParam, "pollneed"));
+
+        var eventTitle = string.IsNullOrWhiteSpace(title)
+            ? $"{dates[0]:M월} 호텔수성스퀘어 소개팅"
+            : title.Trim();
+
+        var evt = new Event
+        {
+            Title = eventTitle,
+            Kind = EventKind.DatePoll,
+            EventDate = dates[0].AddHours(18),
+            Location = VenueHelper.LocationName(EventVenue.HotelSuseongSquare),
+            CandidateDates = dates.Select((d, i) => new EventCandidateDate
+            {
+                EventDate = d,
+                SortOrder = i + 1
+            }).ToList()
+        };
+
+        db.Events.Add(evt);
+        await db.SaveChangesAsync();
+        return Results.Redirect(ApplicationsUrl(EventKind.DatePoll, evt.Id));
+    }
+
+    if (eventDate is null)
+        return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.UnoParam, "date"));
+
+    var dateOnly = eventDate.Value.Date;
+
+    if (await db.Events.AnyAsync(e => e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
+        return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.UnoParam, "duplicate"));
+
+    var fixedTitle = string.IsNullOrWhiteSpace(title)
+        ? $"{dateOnly:M월 d일} 로테이션 소개팅"
+        : title.Trim();
+
+    var fixedEvent = new Event
+    {
+        Title = fixedTitle,
+        Kind = EventKind.FixedDate,
+        EventDate = dateOnly.AddHours(18),
+        Location = VenueHelper.LocationName(EventVenue.UnoCoffee)
+    };
+
+    db.Events.Add(fixedEvent);
+    await db.SaveChangesAsync();
+    return Results.Redirect(ApplicationsUrl(EventKind.FixedDate, fixedEvent.Id));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/update-date", async (
+    [FromForm] int eventId,
+    [FromForm] DateTime eventDate,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var dateOnly = eventDate.Date;
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var evt = await db.Events.FindAsync(eventId);
+
+    if (evt is null || evt.Kind != EventKind.FixedDate)
+        return Results.Redirect("/home");
+
+    if (await db.Events.AnyAsync(e =>
+            e.Id != eventId && e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
+        return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "editDate=true&error=duplicate"));
+
+    evt.EventDate = dateOnly.AddHours(18);
+    ParticipantEventInfoService.SyncFixedDateTitle(evt, dateOnly);
+    await db.SaveChangesAsync();
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "dateUpdated=true"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/save", async (
+    [FromForm] int eventId,
+    [FromForm] int? applicationId,
+    [FromForm] string? name,
+    [FromForm] string? birthDate,
+    [FromForm] string? gender,
+    [FromForm] string? phone,
+    [FromForm] string? residence,
+    [FromForm] string? workplace,
+    [FromForm] string? preferredAgeRange,
+    [FromForm] string? interests,
+    [FromForm] string? drinking,
+    [FromForm] string? smoking,
+    [FromForm] DateTime[]? availableDates,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    if (string.IsNullOrWhiteSpace(name))
+        return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, (applicationId.HasValue ? $"editId={applicationId}" : "addApplication=true") + "&error=name"));
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var evt = await db.Events
+        .Include(e => e.CandidateDates)
+        .FirstOrDefaultAsync(e => e.Id == eventId);
+
+    if (evt is null)
+        return Results.Redirect("/home");
+
+    if (evt.Kind == EventKind.DatePoll && (availableDates is null || availableDates.Length == 0))
+        return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, (applicationId.HasValue ? $"editId={applicationId}" : "addApplication=true") + "&error=availability"));
+
+    void ApplyFields(ParticipantApplication app)
+    {
+        app.Name = name.Trim();
+        app.BirthDate = TrimOrNull(birthDate);
+        app.Gender = TrimOrNull(gender);
+        app.Phone = TrimOrNull(phone);
+        app.Residence = TrimOrNull(residence);
+        app.Workplace = TrimOrNull(workplace);
+        app.PreferredAgeRange = TrimOrNull(preferredAgeRange);
+        app.Interests = TrimOrNull(interests);
+        app.Drinking = ParseOx(drinking);
+        app.Smoking = ParseOx(smoking);
+    }
+
+    ParticipantApplication target;
+
+    if (applicationId.HasValue)
+    {
+        target = await db.Applications
+            .Include(a => a.Availabilities)
+            .FirstOrDefaultAsync(a => a.Id == applicationId.Value)
+            ?? new ParticipantApplication { EventId = eventId };
+
+        if (target.Id == 0)
+            return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId));
+
+        ApplyFields(target);
+    }
+    else
+    {
+        target = new ParticipantApplication { EventId = eventId, AllowContact = false };
+        ApplyFields(target);
+        db.Applications.Add(target);
+        await db.SaveChangesAsync();
+    }
+
+    if (evt.Kind == EventKind.DatePoll)
+        await ReplaceAvailabilitiesAsync(db, target, availableDates!, evt);
+
+    await db.SaveChangesAsync();
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/bulk-import", async (
+    [FromForm] int eventId,
+    [FromForm] string? pasteData,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    if (string.IsNullOrWhiteSpace(pasteData))
+        return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "bulkAdd=true&error=empty"));
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var evt = await db.Events
+        .Include(e => e.CandidateDates)
+        .FirstOrDefaultAsync(e => e.Id == eventId);
+
+    if (evt is null)
+        return Results.Redirect("/home");
+
+    var isPoll = evt.Kind == EventKind.DatePoll;
+    var allowedDates = evt.CandidateDates.Select(c => c.EventDate.Date).ToList();
+    var parsed = BulkApplicationParser.Parse(pasteData, eventId, isPoll, allowedDates);
+    if (parsed.Count == 0)
+        return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "bulkAdd=true&error=noparse"));
+
+    foreach (var item in parsed)
+    {
+        if (isPoll)
+        {
+            item.AvailableDates = item.AvailableDates
+                .Where(d => allowedDates.Contains(d.Date))
+                .Distinct()
+                .ToList();
+
+            if (item.AvailableDates.Count == 0)
+                return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "bulkAdd=true&error=availability"));
+        }
+
+        db.Applications.Add(item.Application);
+        await db.SaveChangesAsync();
+
+        if (isPoll)
+            await ReplaceAvailabilitiesAsync(db, item.Application, item.AvailableDates, evt);
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, $"bulkImported={parsed.Count}"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/finalize-poll", async (
+    [FromForm] int eventId,
+    [FromForm] DateTime finalizedDate,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var evt = await db.Events
+        .Include(e => e.CandidateDates)
+        .FirstOrDefaultAsync(e => e.Id == eventId);
+
+    if (evt is null || evt.Kind != EventKind.DatePoll)
+        return Results.Redirect("/home");
+
+    var dateOnly = finalizedDate.Date;
+    if (!evt.CandidateDates.Any(c => c.EventDate.Date == dateOnly))
+        return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "error=invalidfinal"));
+
+    evt.FinalizedDate = dateOnly;
+    evt.EventDate = dateOnly.AddHours(18);
+
+    var applications = await db.Applications
+        .Include(a => a.Availabilities)
+        .Where(a => a.EventId == eventId)
+        .ToListAsync();
+
+    foreach (var application in applications)
+    {
+        if (!application.Availabilities.Any(a => a.AvailableDate.Date == dateOnly))
+            application.IsConfirmed = false;
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "finalized=true"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/set-contact", async (
+    [FromForm] int applicationId,
+    [FromForm] int eventId,
+    [FromForm] string contacted,
+    [FromForm] string? gender,
+    [FromForm] string? confirmed,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications.FindAsync(applicationId);
+    if (application is not null)
+    {
+        var newValue = ParseOx(contacted);
+        application.AllowContact = newValue switch
+        {
+            true when application.AllowContact == true => null,
+            false when application.AllowContact == false => null,
+            _ => newValue
+        };
+        await db.SaveChangesAsync();
+    }
+
+    var filterQuery = BuildApplicationsListFilterQuery(gender, confirmed);
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, filterQuery, fragment: $"app-{applicationId}"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/applications/set-confirmed", async (
+    [FromForm] int applicationId,
+    [FromForm] int eventId,
+    [FromForm] string confirmed,
+    [FromForm] string? gender,
+    [FromForm] string? confirmedFilter,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications
+        .Include(a => a.Event)
+        .Include(a => a.Availabilities)
+        .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+    var filterQuery = BuildApplicationsListFilterQuery(gender, confirmedFilter);
+
+    if (application is not null)
+    {
+        if (confirmed == "true" && !EventDateHelper.CanConfirmOnPoll(application))
+            return Results.Redirect(await ApplicationsUrlForEventAsync(
+                dbFactory,
+                eventId,
+                MergeApplicationListQuery(filterQuery, "error=confirm"),
+                fragment: $"app-{applicationId}"));
+
+        application.IsConfirmed = confirmed == "true";
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, filterQuery, fragment: $"app-{applicationId}"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/events/delete", async (
+    [FromForm] int eventId,
+    [FromForm] string returnPage,
+    [FromForm] string? venue,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var evt = await db.Events.FindAsync(eventId);
+    EventKind kind = evt?.Kind ?? EventKind.FixedDate;
+    if (evt is not null)
+    {
+        kind = evt.Kind;
+        db.Events.Remove(evt);
+        await db.SaveChangesAsync();
+    }
+
+    var parsedVenue = VenueHelper.TryParse(venue) ?? VenueHelper.FromEventKind(kind);
+    var path = returnPage == "participants" ? "/participants" : "/applications";
+    return Results.Redirect(VenueHelper.AdminPageUrl(path, parsedVenue));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/questions/save", async (
+    [FromForm] int id,
+    [FromForm] string? text,
+    [FromForm] string? venue,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var venueQuery = VenueHelper.TryParse(venue) is { } parsedVenue
+        ? $"&{VenueHelper.VenueQuery(parsedVenue)}"
+        : "";
+
+    if (string.IsNullOrWhiteSpace(text))
+        return Results.Redirect($"/admin/questions?error=empty&id={id}{venueQuery}");
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var question = await db.QuestionCards.FindAsync(id);
+    if (question is not null)
+    {
+        question.Text = text.Trim();
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Redirect($"/admin/questions?saved=true&id={id}{venueQuery}");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/vote/save", async (
+    HttpContext context,
+    [FromForm] string voteType,
+    [FromForm] int? targetId,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var session = ParticipantSession.FromClaims(context.User);
+    if (session is null)
+        return Results.Redirect("/");
+
+    if (!Enum.TryParse<VoteType>(voteType, ignoreCase: true, out var parsedVoteType))
+        return Results.Redirect("/welcome");
+
+    if (session.IsHotelSuseongSquare && parsedVoteType == VoteType.Mid)
+        return Results.Redirect("/vote/final");
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+
+    var voter = await db.Applications.FindAsync(session.ApplicationId);
+    if (voter is null || !voter.IsConfirmed || voter.EventId != session.EventId)
+        return Results.Redirect("/");
+
+    var oppositeGender = session.OppositeGender;
+    int? selectedId = null;
+
+    if (targetId is > 0 && targetId != session.ApplicationId && !string.IsNullOrEmpty(oppositeGender))
+    {
+        var isValidTarget = await db.Applications.AnyAsync(a =>
+            a.Id == targetId
+            && a.EventId == session.EventId
+            && a.IsConfirmed
+            && a.Gender == oppositeGender);
+
+        if (isValidTarget)
+            selectedId = targetId;
+    }
+
+    var existing = await db.Votes
+        .Where(v => v.VoterApplicationId == session.ApplicationId && v.VoteType == parsedVoteType)
+        .ToListAsync();
+    db.Votes.RemoveRange(existing);
+
+    if (selectedId is not null)
+    {
+        db.Votes.Add(new ParticipantVote
+        {
+            EventId = session.EventId,
+            VoterApplicationId = session.ApplicationId,
+            TargetApplicationId = selectedId.Value,
+            VoteType = parsedVoteType
+        });
+    }
+
+    await db.SaveChangesAsync();
+
+    var redirectPath = parsedVoteType == VoteType.Mid ? "/vote/mid" : "/vote/final";
+    return Results.Redirect($"{redirectPath}?saved=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Participant)).DisableAntiforgery();
+
+app.MapPost("/seating/mid/generate", async (
+    [FromForm] int eventId,
+    SeatMatchingService seatMatching,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var (_, _, error) = await seatMatching.GenerateMidVoteSeatingAsync(eventId);
+
+    if (!string.IsNullOrEmpty(error))
+        return Results.Redirect(await SeatingUrlForEventAsync(dbFactory, "/seating/mid", eventId, $"generateError={Uri.EscapeDataString(error)}"));
+
+    return Results.Redirect(await SeatingUrlForEventAsync(dbFactory, "/seating/mid", eventId, "generated=true"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/seating/initial/generate", async (
+    [FromForm] int eventId,
+    SeatMatchingService seatMatching,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var (_, _, error) = await seatMatching.GenerateInitialSeatingAsync(eventId);
+
+    if (!string.IsNullOrEmpty(error))
+        return Results.Redirect(await SeatingUrlForEventAsync(dbFactory, "/seating/initial", eventId, $"generateError={Uri.EscapeDataString(error)}"));
+
+    return Results.Redirect(await SeatingUrlForEventAsync(dbFactory, "/seating/initial", eventId, "generated=true"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapRazorComponents<App>();
+
+app.Run();
+
+static string ApplicationsUrl(EventKind kind, int? eventId = null, string? extraQuery = null, string? fragment = null) =>
+    VenueHelper.AdminPageUrl("/applications", VenueHelper.FromEventKind(kind), eventId, extraQuery, fragment);
+
+static string ApplicationsAddDateUrl(string venueParam, string error) =>
+    VenueHelper.AdminPageUrl(
+        "/applications",
+        VenueHelper.TryParse(venueParam) ?? EventVenue.UnoCoffee,
+        extraQuery: $"addDate=true&error={error}");
+
+static string ParticipantsAddDateUrl(string error) =>
+    VenueHelper.AdminPageUrl("/participants", EventVenue.UnoCoffee, extraQuery: $"addDate=true&error={error}");
+
+static async Task<string> ApplicationsUrlForEventAsync(
+    IDbContextFactory<AppDbContext> dbFactory,
+    int eventId,
+    string? extraQuery = null,
+    string? fragment = null)
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var kind = await db.Events.AsNoTracking()
+        .Where(e => e.Id == eventId)
+        .Select(e => e.Kind)
+        .FirstOrDefaultAsync();
+    return ApplicationsUrl(kind, eventId, extraQuery, fragment);
+}
+
+static async Task<string> SeatingUrlForEventAsync(
+    IDbContextFactory<AppDbContext> dbFactory,
+    string pagePath,
+    int eventId,
+    string? extraQuery = null)
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var kind = await db.Events.AsNoTracking()
+        .Where(e => e.Id == eventId)
+        .Select(e => e.Kind)
+        .FirstOrDefaultAsync();
+    return VenueHelper.AdminPageUrl(pagePath, VenueHelper.FromEventKind(kind), eventId, extraQuery);
+}
+
+static string? MergeApplicationListQuery(string? filterQuery, string? extraQuery)
+{
+    if (string.IsNullOrWhiteSpace(filterQuery))
+        return extraQuery;
+    if (string.IsNullOrWhiteSpace(extraQuery))
+        return filterQuery;
+    return $"{filterQuery}&{extraQuery}";
+}
+
+static string? BuildApplicationsListFilterQuery(string? gender, string? confirmed)
+{
+    var parts = new List<string>();
+    if (gender is "남" or "여")
+        parts.Add($"gender={Uri.EscapeDataString(gender)}");
+    if (confirmed is "confirmed" or "pending")
+        parts.Add($"confirmed={Uri.EscapeDataString(confirmed)}");
+    return parts.Count == 0 ? null : string.Join("&", parts);
+}
+
+static string? TrimOrNull(string? value) =>
+    string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+static bool? ParseOx(string? value) => value?.Trim().ToLowerInvariant() switch
+{
+    "true" or "o" => true,
+    "false" or "x" => false,
+    _ => null
+};
+
+static async Task ReplaceAvailabilitiesAsync(
+    AppDbContext db,
+    ParticipantApplication application,
+    IEnumerable<DateTime> availableDates,
+    Event evt)
+{
+    var allowed = evt.CandidateDates.Select(c => c.EventDate.Date).ToHashSet();
+    var existing = await db.ApplicationAvailabilities
+        .Where(a => a.ApplicationId == application.Id)
+        .ToListAsync();
+    db.ApplicationAvailabilities.RemoveRange(existing);
+
+    foreach (var date in availableDates.Select(d => d.Date).Where(allowed.Contains).Distinct())
+    {
+        db.ApplicationAvailabilities.Add(new ApplicationAvailability
+        {
+            ApplicationId = application.Id,
+            AvailableDate = date
+        });
+    }
+}
+
+static IResult InvalidLoginResponse() => Results.Content(
+    """
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>로그인</title>
+    </head>
+    <body>
+        <script>
+            alert('이름+행사일(예: 홍길동260705)을 확인해주세요');
+            location.replace('/');
+        </script>
+    </body>
+    </html>
+    """,
+    "text/html; charset=utf-8");

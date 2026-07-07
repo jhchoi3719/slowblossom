@@ -1,0 +1,20 @@
+@page "/questions"
+@layout Layout.ParticipantLayout
+@attribute [Authorize(Roles = "Participant")]
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>질문카드</PageTitle>
+
+<div class="page participant-page">
+    <header class="page-header">
+        <h1>질문카드</h1>
+        <p class="subtitle">대화가 막힐 때 함께 나눠 보세요</p>
+    </header>
+
+    <QuestionCardSection BasePath="/questions" N="N" />
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? N { get; set; }
+}

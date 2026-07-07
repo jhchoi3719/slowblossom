@@ -1,0 +1,44 @@
+@page "/"
+@layout Layout.LoginLayout
+@using RotationDating.Web.Services
+
+<PageTitle>로그인</PageTitle>
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-brand">
+            <img src="logo.png" alt="slow blossom" class="login-logo-img" />
+        </div>
+
+        <div class="login-content">
+            <p class="login-message">이름 + 행사일(YYMMDD)로 로그인하세요</p>
+            <p class="login-example">예: @_exampleDateLabel 행사 참가 홍길동 → <strong>@_exampleLoginId</strong></p>
+
+            <form method="post" action="/login" class="login-form" enctype="application/x-www-form-urlencoded">
+                <AntiforgeryToken />
+                <input type="text"
+                       name="username"
+                       class="input login-input"
+                       placeholder="@_exampleLoginId"
+                       autocomplete="username"
+                       required
+                       maxlength="50" />
+                <button type="submit" class="btn btn-primary login-btn">로그인</button>
+            </form>
+
+            @if (HasError)
+            {
+                <p class="error-text login-error">로그인 정보를 입력해 주세요.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public bool Error { get; set; }
+
+    private bool HasError => Error;
+    private string _exampleDateLabel => DateTime.Today.ToString("M월 d일");
+    private string _exampleLoginId => ParticipantAuthService.FormatLoginId("홍길동", DateTime.Today);
+}

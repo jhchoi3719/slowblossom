@@ -1,0 +1,53 @@
+@inherits LayoutComponentBase
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using RotationDating.Web.Services
+
+<div class="app-shell participant-shell">
+    <AuthorizeView Roles="Participant">
+        <Authorized>
+            <header class="top-bar participant-top-bar">
+                <span class="user-name">@context.User.Identity?.Name 님</span>
+                <form method="post" action="/logout" class="inline-form">
+                    <button type="submit" class="btn btn-sm logout-btn">로그아웃</button>
+                </form>
+            </header>
+        </Authorized>
+    </AuthorizeView>
+
+    <main class="main-content participant-main">
+        @Body
+    </main>
+
+    <nav class="bottom-nav participant-nav">
+        <NavLink href="/welcome" class="nav-item" Match="NavLinkMatch.All">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">홈</span>
+        </NavLink>
+        <AuthorizeView Roles="Participant">
+            <Authorized>
+                @if (!IsHotelSuseongParticipant(context.User))
+                {
+                    <NavLink href="/vote/mid" class="nav-item">
+                        <span class="nav-icon">💗</span>
+                        <span class="nav-label">중간투표</span>
+                    </NavLink>
+                }
+            </Authorized>
+        </AuthorizeView>
+        <NavLink href="/questions" class="nav-item">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">질문카드</span>
+        </NavLink>
+        <NavLink href="/vote/final" class="nav-item">
+            <span class="nav-icon">💖</span>
+            <span class="nav-label">최종투표</span>
+        </NavLink>
+    </nav>
+</div>
+
+@code {
+    private static bool IsHotelSuseongParticipant(ClaimsPrincipal user) =>
+        user.FindFirst(AuthClaims.VenueLabel)?.Value.Contains("호텔수성스퀘어", StringComparison.Ordinal) == true;
+}

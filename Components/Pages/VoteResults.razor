@@ -1,0 +1,301 @@
+@page "/vote-results/mid"
+@page "/vote-results/final"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>@_pageTitle</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="@_homeUrl" class="back-link">← 메뉴</a>
+        <h1>@_pageTitle</h1>
+        <p class="subtitle">@_venueSubtitle</p>
+    </header>
+
+    @if (_venue is null)
+    {
+        <div class="empty-state">
+            <p>장소를 먼저 선택해 주세요.</p>
+            <a class="btn btn-primary" href="/home">장소 선택으로 이동</a>
+        </div>
+    }
+    else
+    {
+    <div class="date-tabs">
+        @foreach (var evt in _events)
+        {
+            <a class="date-tab @(EventId == evt.Id ? "active" : "")"
+               href="@GetPageUrl(evt.Id)">
+                <span class="tab-date">@evt.TabLabel</span>
+                <span class="tab-count">@(GetVoteCount(evt.Id))건</span>
+            </a>
+        }
+    </div>
+
+    @if (_selectedEvent is null)
+    {
+        <div class="empty-state">
+            <p>등록된 행사 날짜가 없습니다.</p>
+        </div>
+    }
+    else if (_mutualMatches.Count == 0 && _resultGroups.Count == 0)
+    {
+        <div class="empty-state">
+            <p>이 날짜에 @_pageTitle 결과가 없습니다.</p>
+            <p>참가자가 투표를 완료하면 여기에 표시됩니다.</p>
+        </div>
+    }
+    else
+    {
+        @if (_voteType == VoteType.Mid && _venue == EventVenue.UnoCoffee)
+        {
+            <div class="seat-link-banner">
+                <span>중간투표 결과로 좌석을 배치할 수 있습니다.</span>
+                <a href="@VenueHelper.AdminPageUrl("/seating/mid", _venue.Value, _selectedEvent.Id)" class="btn btn-primary btn-sm">좌석 배치 →</a>
+            </div>
+        }
+
+        <div class="summary-bar">
+            <span class="summary-item total">@(_maleVoterCount + _femaleVoterCount)명 투표</span>
+            <span class="summary-item male">남 @(_maleVoterCount)명</span>
+            <span class="summary-item female">여 @(_femaleVoterCount)명</span>
+            <span class="summary-item mutual">서로 선택 @(_mutualMatches.Count)쌍</span>
+            <span class="summary-date">@_selectedEvent.FormattedDate</span>
+        </div>
+
+        @if (_mutualMatches.Count > 0)
+        {
+            <section class="mutual-match-section">
+                <h2 class="mutual-match-heading">서로 선택</h2>
+                <p class="mutual-match-desc">남녀가 서로를 선택한 경우입니다.</p>
+                <div class="mutual-match-list">
+                    @foreach (var match in _mutualMatches)
+                    {
+                        <div class="mutual-match-card">
+                            <span class="mutual-person mutual-male">@match.MaleName <span class="mutual-gender">남</span></span>
+                            <span class="mutual-arrow">↔</span>
+                            <span class="mutual-person mutual-female">@match.FemaleName <span class="mutual-gender">여</span></span>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+
+        <div class="participant-list">
+            @foreach (var group in _resultGroups)
+            {
+                <div class="participant-card application-card @GetGenderClass(group.VoterGender)">
+                    <div class="participant-header">
+                        <span class="participant-name">@group.VoterName</span>
+                        @if (!string.IsNullOrWhiteSpace(group.VoterGender))
+                        {
+                            <span class="participant-tag gender-tag-@(group.VoterGender == "남" ? "male" : "female")">@group.VoterGender</span>
+                        }
+                        <span class="vote-result-count">@(group.Targets.Count)명 선택</span>
+                    </div>
+                    <div class="participant-body">
+                        <div class="info-row">
+                            <span class="label">선택</span>
+                            <span class="value vote-target-list">
+                                @string.Join(", ", group.Targets.Select(t => $"{t.Name}{(string.IsNullOrWhiteSpace(t.Gender) ? "" : $" ({t.Gender})")}"))
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? EventId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "venue")]
+    public string? Venue { get; set; }
+
+    private EventVenue? _venue;
+    private string _homeUrl = "/home";
+    private string _venueSubtitle = "";
+    private VoteType _voteType;
+    private string _pageTitle = "";
+    private string _pageSubtitle = "";
+    private List<Event> _events = [];
+    private Event? _selectedEvent;
+    private List<VoteResultGroup> _resultGroups = [];
+    private List<MutualMatch> _mutualMatches = [];
+    private Dictionary<int, int> _voteCountsByEvent = [];
+    private int _maleVoterCount;
+    private int _femaleVoterCount;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _voteType = Navigation.Uri.Contains("/vote-results/final", StringComparison.OrdinalIgnoreCase)
+            ? VoteType.Final
+            : VoteType.Mid;
+
+        _pageTitle = _voteType == VoteType.Mid ? "중간투표 결과" : "최종투표 결과";
+        _pageSubtitle = _voteType == VoteType.Mid
+            ? "중간투표에서 누가 누구를 선택했는지 확인합니다"
+            : "최종투표에서 누가 누구를 선택했는지 확인합니다";
+
+        _venue = VenueHelper.TryParse(Venue);
+        _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
+        _venueSubtitle = _venue.HasValue
+            ? $"{VenueHelper.DisplayName(_venue.Value)} · {_pageSubtitle}"
+            : _pageSubtitle;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var allEvents = await db.Events
+            .Include(e => e.CandidateDates)
+            .OrderBy(e => e.EventDate)
+            .ToListAsync();
+
+        _events = _venue.HasValue
+            ? VenueHelper.FilterByVenue(allEvents, _venue.Value).ToList()
+            : [];
+
+        var allVotes = await db.Votes
+            .Where(v => v.VoteType == _voteType)
+            .Select(v => new { v.EventId, v.VoterApplicationId })
+            .ToListAsync();
+
+        _voteCountsByEvent = allVotes
+            .GroupBy(v => v.EventId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.VoterApplicationId).Distinct().Count());
+
+        if (EventId.HasValue)
+            _selectedEvent = _events.FirstOrDefault(e => e.Id == EventId);
+        else if (_events.Count > 0)
+        {
+            _selectedEvent = _events[0];
+            EventId = _selectedEvent.Id;
+        }
+
+        if (_selectedEvent is null) return;
+
+        var votes = await db.Votes
+            .Include(v => v.Voter)
+            .Include(v => v.Target)
+            .Where(v => v.EventId == _selectedEvent.Id && v.VoteType == _voteType)
+            .ToListAsync();
+
+        var mutualParticipantIds = SeatMatchingService.GetMutualParticipantIds(votes);
+        _mutualMatches = BuildMutualMatches(votes);
+
+        _resultGroups = votes
+            .Where(v => !mutualParticipantIds.Contains(v.VoterApplicationId))
+            .GroupBy(v => v.VoterApplicationId)
+            .Select(g =>
+            {
+                var voter = g.First().Voter!;
+                return new VoteResultGroup
+                {
+                    VoterName = voter.Name,
+                    VoterGender = voter.Gender,
+                    Targets = g.Select(v => v.Target!)
+                        .OrderBy(t => t.Name)
+                        .Select(t => new VoteTargetInfo { Name = t.Name, Gender = t.Gender })
+                        .ToList()
+                };
+            })
+            .OrderBy(g => g.VoterGender)
+            .ThenBy(g => g.VoterName)
+            .ToList();
+
+        var voters = votes
+            .GroupBy(v => v.VoterApplicationId)
+            .Select(g => g.First().Voter!)
+            .ToList();
+
+        _maleVoterCount = voters.Count(v => v.Gender == "남");
+        _femaleVoterCount = voters.Count(v => v.Gender == "여");
+    }
+
+    private static List<MutualMatch> BuildMutualMatches(List<ParticipantVote> votes)
+    {
+        var voterToTargets = votes
+            .GroupBy(v => v.VoterApplicationId)
+            .ToDictionary(g => g.Key, g => g.Select(v => v.TargetApplicationId).ToHashSet());
+
+        var seen = new HashSet<long>();
+        var matches = new List<MutualMatch>();
+
+        foreach (var vote in votes)
+        {
+            var voterId = vote.VoterApplicationId;
+            var targetId = vote.TargetApplicationId;
+
+            if (!voterToTargets.TryGetValue(targetId, out var reciprocal) || !reciprocal.Contains(voterId))
+                continue;
+
+            var pairKey = ((long)Math.Min(voterId, targetId) << 32) | (uint)Math.Max(voterId, targetId);
+            if (!seen.Add(pairKey))
+                continue;
+
+            var voter = vote.Voter!;
+            var target = vote.Target!;
+            var (maleName, femaleName) = voter.Gender == "남"
+                ? (voter.Name, target.Name)
+                : target.Gender == "남"
+                    ? (target.Name, voter.Name)
+                    : (voter.Name, target.Name);
+
+            matches.Add(new MutualMatch
+            {
+                MaleName = maleName,
+                FemaleName = femaleName
+            });
+        }
+
+        return matches
+            .OrderBy(m => m.MaleName)
+            .ThenBy(m => m.FemaleName)
+            .ToList();
+    }
+
+    private int GetVoteCount(int eventId) =>
+        _voteCountsByEvent.GetValueOrDefault(eventId);
+
+    private string GetPageUrl(int eventId)
+    {
+        var path = _voteType == VoteType.Mid ? "/vote-results/mid" : "/vote-results/final";
+        return _venue.HasValue
+            ? VenueHelper.AdminPageUrl(path, _venue.Value, eventId)
+            : $"{path}?eventId={eventId}";
+    }
+
+    private static string GetGenderClass(string? gender) => gender switch
+    {
+        "남" => "card-male",
+        "여" => "card-female",
+        _ => ""
+    };
+
+    private sealed class VoteResultGroup
+    {
+        public string VoterName { get; set; } = "";
+        public string? VoterGender { get; set; }
+        public List<VoteTargetInfo> Targets { get; set; } = [];
+    }
+
+    private sealed class VoteTargetInfo
+    {
+        public string Name { get; set; } = "";
+        public string? Gender { get; set; }
+    }
+
+    private sealed class MutualMatch
+    {
+        public string MaleName { get; set; } = "";
+        public string FemaleName { get; set; } = "";
+    }
+}

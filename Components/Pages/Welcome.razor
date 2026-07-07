@@ -1,0 +1,91 @@
+@page "/welcome"
+@layout Layout.ParticipantLayout
+@attribute [Authorize(Roles = "Participant")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>환영합니다</PageTitle>
+
+<div class="welcome-page">
+    <div class="welcome-bg" aria-hidden="true"></div>
+
+    <div class="welcome-card">
+        <div class="welcome-logo-wrap">
+            <img src="logo.png" alt="slow blossom" class="welcome-logo" />
+        </div>
+
+        <p class="welcome-brand">slow blossom</p>
+        <h1 class="welcome-title">로테이션 소개팅에<br />오신 걸 환영합니다</h1>
+
+        <div class="welcome-divider">
+            <span class="welcome-divider-dot"></span>
+        </div>
+
+        <p class="welcome-greeting">
+            <strong>@_participantName</strong>님,<br />
+            오늘 좋은 인연 만나시길 바랍니다.
+        </p>
+
+        @if (!string.IsNullOrWhiteSpace(_eventTitle))
+        {
+            <div class="welcome-event">
+                @if (!string.IsNullOrWhiteSpace(_venueLabel))
+                {
+                    <span class="welcome-event-label">@_venueLabel</span>
+                }
+                <span class="welcome-event-title">@_eventTitle</span>
+                @if (!string.IsNullOrWhiteSpace(_eventDateLabel))
+                {
+                    <span class="welcome-event-date">@_eventDateLabel</span>
+                }
+            </div>
+        }
+
+        <div class="welcome-tips">
+            <p>편안한 마음으로 참여해 주세요.</p>
+            <p>하단 메뉴에서 질문카드와 투표를 이용할 수 있습니다.</p>
+        </div>
+    </div>
+
+    <p class="welcome-footer">slow blossom rotation dating</p>
+</div>
+
+<a href="https://pf.kakao.com/_cxcUFb"
+   class="kakao-floating-btn"
+   target="_blank"
+   rel="noopener noreferrer"
+   aria-label="싱싱한팜 카카오톡 채널 추가">
+    싱싱한팜 추가
+</a>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string _participantName = "";
+    private string _eventTitle = "";
+    private string _eventDateLabel = "";
+    private string _venueLabel = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var user = (await AuthState).User;
+        _participantName = user.Identity?.Name ?? "";
+
+        if (!int.TryParse(user.FindFirst(AuthClaims.EventId)?.Value, out var eventId))
+            return;
+
+        var info = await ParticipantEventInfoService.GetAsync(DbFactory, eventId);
+        if (info is null)
+            return;
+
+        _eventTitle = info.Title;
+        _venueLabel = info.VenueLabel;
+        _eventDateLabel = info.DateLabel;
+    }
+}

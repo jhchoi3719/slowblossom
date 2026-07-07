@@ -1,0 +1,80 @@
+@page "/admin/questions"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject QuestionCardService QuestionCards
+
+<PageTitle>질문카드 관리</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="@_homeUrl" class="back-link">← 메뉴</a>
+        <h1>질문카드</h1>
+        <p class="subtitle">@_pageSubtitle</p>
+    </header>
+
+    @if (Saved)
+    {
+        <div class="alert-success">질문이 저장되었습니다.</div>
+    }
+    @if (Error == "empty")
+    {
+        <div class="error-text question-list-error">질문 내용을 입력해 주세요.</div>
+    }
+
+    <div class="question-admin-list">
+        @foreach (var question in _questions)
+        {
+            <form method="post"
+                  action="/admin/questions/save"
+                  class="question-admin-item @(SavedId == question.Id ? "saved" : "")"
+                  id="question-@question.Id">
+                <input type="hidden" name="id" value="@question.Id" />
+                @if (_venue.HasValue)
+                {
+                    <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
+                }
+                <span class="question-admin-no">@question.SortOrder</span>
+                <input type="text"
+                       name="text"
+                       class="input question-admin-input"
+                       value="@question.Text"
+                       maxlength="500"
+                       required />
+                <button type="submit" class="btn btn-sm btn-primary">저장</button>
+            </form>
+        }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public bool Saved { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "venue")]
+    public string? Venue { get; set; }
+
+    private EventVenue? _venue;
+    private string _homeUrl = "/home";
+    private string _pageSubtitle = "";
+
+    private List<Models.QuestionCard> _questions = [];
+    private int? SavedId => Saved ? Id : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _venue = VenueHelper.TryParse(Venue);
+        _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
+        _questions = await QuestionCards.GetAllAsync();
+        _pageSubtitle = _venue.HasValue
+            ? $"{VenueHelper.DisplayName(_venue.Value)} · 대화 주제 {_questions.Count}개 · 내용을 수정할 수 있습니다"
+            : $"대화 주제 {_questions.Count}개 · 내용을 수정할 수 있습니다";
+    }
+}

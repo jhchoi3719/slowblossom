@@ -1,0 +1,268 @@
+@page "/seating/mid"
+@page "/seating/initial"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject SeatMatchingService SeatMatching
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+
+<PageTitle>좌석 배치</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="@_homeUrl" class="back-link">← 메뉴</a>
+        <h1>좌석 배치</h1>
+        <p class="subtitle">@_pageSubtitle</p>
+    </header>
+
+    @if (_venue is null)
+    {
+        <div class="empty-state">
+            <p>장소를 먼저 선택해 주세요.</p>
+            <a class="btn btn-primary" href="/home">장소 선택으로 이동</a>
+        </div>
+    }
+    else
+    {
+    <div class="date-tabs">
+        @foreach (var evt in _events)
+        {
+            <a class="date-tab @(EventId == evt.Id ? "active" : "")"
+               href="@GetPageUrl(evt.Id)">
+                <span class="tab-date">@evt.TabLabel</span>
+                <span class="tab-count">@(_seatCountsByEvent.GetValueOrDefault(evt.Id))쌍</span>
+            </a>
+        }
+    </div>
+
+    @if (_selectedEvent is null)
+    {
+        <div class="empty-state">
+            <p>등록된 행사 날짜가 없습니다.</p>
+        </div>
+    }
+    else
+    {
+        @if (Generated)
+        {
+            <div class="alert-success">좌석 배치가 생성되었습니다.</div>
+        }
+        @if (!string.IsNullOrEmpty(GenerateError))
+        {
+            <div class="error-text seat-error">@GenerateError</div>
+        }
+
+        <div class="seat-toolbar">
+            <div class="seat-toolbar-info">
+                <span>확정 참가자 @(_confirmedMaleCount)남 @(_confirmedFemaleCount)여</span>
+                @if (_hasGeminiKey)
+                {
+                    <span class="seat-ai-badge">Gemini AI</span>
+                }
+                else
+                {
+                    <span class="seat-ai-badge fallback">자동 매칭</span>
+                }
+            </div>
+            <form method="post" action="@_generateAction">
+                <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                <button type="submit" class="btn btn-primary btn-sm">
+                    @(_seats.Count > 0 ? "좌석 배치 다시 생성" : "좌석 배치 생성")
+                </button>
+            </form>
+        </div>
+
+        @if (_seats.Count == 0)
+        {
+            <div class="empty-state">
+                <p>아직 좌석 배치가 없습니다.</p>
+                <p>@_emptyDescription</p>
+            </div>
+        }
+        else
+        {
+            <div class="summary-bar">
+                <span class="summary-item total">@(_seats.Count)쌍 배치</span>
+                @if (!_isInitialMode)
+                {
+                    <span class="summary-item mutual">서로 선택 @(_mutualCount)쌍</span>
+                    <span class="summary-item male">남자 선택 @(_maleVoteCount)쌍</span>
+                    <span class="summary-item female">여자 선택 @(_femaleVoteCount)쌍</span>
+                }
+                <span class="summary-item ai">AI @(_aiCount)쌍</span>
+                <span class="summary-date">@_selectedEvent.FormattedDate</span>
+            </div>
+
+            <div class="seat-list">
+                @foreach (var seat in _seats)
+                {
+                    <div class="seat-card @(GetSeatCardClass(seat.MatchSource))">
+                        <div class="seat-card-header">
+                            <div class="seat-pair">
+                                <span class="mutual-person mutual-male">@seat.Male?.Name <span class="mutual-gender">남</span></span>
+                                <span class="mutual-arrow">↔</span>
+                                <span class="mutual-person mutual-female">@seat.Female?.Name <span class="mutual-gender">여</span></span>
+                            </div>
+                            <span class="seat-source-badge @GetSeatBadgeClass(seat.MatchSource)">
+                                @SeatMatchingService.GetMatchSourceLabel(seat.MatchSource)
+                            </span>
+                        </div>
+                        @if (seat.MatchSource != MatchSource.Mutual && !string.IsNullOrWhiteSpace(seat.Reason))
+                        {
+                            <p class="seat-reason">@seat.Reason</p>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_unmatchedNames.Count > 0)
+            {
+                <p class="seat-unmatched">좌석 미배정: @string.Join(", ", _unmatchedNames)</p>
+            }
+        }
+    }
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? EventId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Generated { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? GenerateError { get; set; }
+
+    [SupplyParameterFromQuery(Name = "venue")]
+    public string? Venue { get; set; }
+
+    private EventVenue? _venue;
+    private string _homeUrl = "/home";
+    private string _pageSubtitle = "";
+    private string _emptyDescription = "";
+    private string _generateAction = "/seating/mid/generate";
+    private bool _isInitialMode;
+
+    private List<Event> _events = [];
+    private Event? _selectedEvent;
+    private List<ParticipantAiMatch> _seats = [];
+    private List<string> _unmatchedNames = [];
+    private Dictionary<int, int> _seatCountsByEvent = [];
+    private int _confirmedMaleCount;
+    private int _confirmedFemaleCount;
+    private int _mutualCount;
+    private int _maleVoteCount;
+    private int _femaleVoteCount;
+    private int _aiCount;
+    private bool _hasGeminiKey;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isInitialMode = Navigation.Uri.Contains("/seating/initial", StringComparison.OrdinalIgnoreCase);
+        _venue = VenueHelper.TryParse(Venue);
+        _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
+        _generateAction = _isInitialMode ? "/seating/initial/generate" : "/seating/mid/generate";
+        _pageSubtitle = _isInitialMode
+            ? (_venue.HasValue
+                ? $"{VenueHelper.DisplayName(_venue.Value)} · 행사 시작 전에 AI로 남녀 1:1 좌석을 배치합니다"
+                : "행사 시작 전에 AI로 남녀 1:1 좌석을 배치합니다")
+            : (_venue.HasValue
+                ? $"{VenueHelper.DisplayName(_venue.Value)} · 중간투표 결과를 바탕으로 남녀 1:1 좌석을 배치합니다"
+                : "중간투표 결과를 바탕으로 남녀 1:1 좌석을 배치합니다");
+        _emptyDescription = _isInitialMode
+            ? "행사 시작 전에 좌석 배치를 생성해 주세요."
+            : "중간투표가 완료된 뒤 좌석 배치를 생성해 주세요.";
+
+        if (!_isInitialMode && _venue == EventVenue.HotelSuseongSquare)
+        {
+            _isInitialMode = true;
+            _generateAction = "/seating/initial/generate";
+            _pageSubtitle = $"{VenueHelper.DisplayName(EventVenue.HotelSuseongSquare)} · 행사 시작 전에 AI로 남녀 1:1 좌석을 배치합니다";
+            _emptyDescription = "행사 시작 전에 좌석 배치를 생성해 주세요.";
+        }
+
+        _hasGeminiKey = !string.IsNullOrWhiteSpace(Configuration["Gemini:ApiKey"])
+            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY"));
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var allEvents = await db.Events
+            .Include(e => e.CandidateDates)
+            .OrderBy(e => e.EventDate)
+            .ToListAsync();
+
+        _events = _venue.HasValue
+            ? VenueHelper.FilterByVenue(allEvents, _venue.Value).ToList()
+            : [];
+
+        _seatCountsByEvent = await db.AiMatches
+            .Where(m => m.VoteType == (_isInitialMode ? VoteType.Initial : VoteType.Mid))
+            .GroupBy(m => m.EventId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+        if (EventId.HasValue)
+            _selectedEvent = _events.FirstOrDefault(e => e.Id == EventId);
+        else if (_events.Count > 0)
+        {
+            _selectedEvent = _events[0];
+            EventId = _selectedEvent.Id;
+        }
+
+        if (_selectedEvent is null) return;
+
+        var confirmed = await db.Applications
+            .Where(a => a.EventId == _selectedEvent.Id && a.IsConfirmed && (a.Gender == "남" || a.Gender == "여"))
+            .ToListAsync();
+
+        _confirmedMaleCount = confirmed.Count(a => a.Gender == "남");
+        _confirmedFemaleCount = confirmed.Count(a => a.Gender == "여");
+
+        _seats = _isInitialMode
+            ? await SeatMatching.GetInitialSeatingAsync(_selectedEvent.Id)
+            : await SeatMatching.GetMidVoteSeatingAsync(_selectedEvent.Id);
+
+        _mutualCount = _seats.Count(s => s.MatchSource == MatchSource.Mutual);
+        _maleVoteCount = _seats.Count(s => s.MatchSource == MatchSource.MaleVote);
+        _femaleVoteCount = _seats.Count(s => s.MatchSource == MatchSource.FemaleVote);
+        _aiCount = _seats.Count(s => s.MatchSource == MatchSource.ProfileAi);
+
+        var matchedIds = _seats
+            .SelectMany(s => new[] { s.MaleApplicationId, s.FemaleApplicationId })
+            .ToHashSet();
+
+        _unmatchedNames = confirmed
+            .Where(a => !matchedIds.Contains(a.Id))
+            .Select(a => a.Name)
+            .OrderBy(n => n)
+            .ToList();
+    }
+
+    private string GetPageUrl(int eventId) =>
+        _venue.HasValue
+            ? VenueHelper.AdminPageUrl(_isInitialMode ? "/seating/initial" : "/seating/mid", _venue.Value, eventId)
+            : $"{(_isInitialMode ? "/seating/initial" : "/seating/mid")}?eventId={eventId}";
+
+    private static string GetSeatCardClass(MatchSource source) => source switch
+    {
+        MatchSource.Mutual => "seat-mutual",
+        MatchSource.MaleVote => "seat-male-vote",
+        MatchSource.FemaleVote => "seat-female-vote",
+        MatchSource.ProfileAi => "seat-ai",
+        _ => ""
+    };
+
+    private static string GetSeatBadgeClass(MatchSource source) => source switch
+    {
+        MatchSource.Mutual => "badge-mutual",
+        MatchSource.MaleVote => "badge-male",
+        MatchSource.FemaleVote => "badge-female",
+        MatchSource.ProfileAi => "badge-ai",
+        _ => ""
+    };
+}

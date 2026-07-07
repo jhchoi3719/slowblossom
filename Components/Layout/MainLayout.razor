@@ -1,0 +1,42 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using RotationDating.Web.Services
+
+<div class="app-shell">
+    <AuthorizeView>
+        <Authorized>
+            <header class="top-bar">
+                <span class="user-name">@context.User.Identity?.Name 님</span>
+                @if (context.User.IsInRole(AuthRoles.Admin))
+                {
+                    <span class="admin-badge">관리자</span>
+                }
+                <form method="post" action="/logout" class="inline-form">
+                    <button type="submit" class="btn btn-sm logout-btn">로그아웃</button>
+                </form>
+            </header>
+        </Authorized>
+    </AuthorizeView>
+
+    <nav class="bottom-nav">
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <NavLink href="/home" class="nav-item" Match="NavLinkMatch.All">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-label">메뉴</span>
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+
+    <main class="main-content">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    오류가 발생했습니다.
+    <a href="" class="reload">새로고침</a>
+    <a class="dismiss">🗙</a>
+</div>

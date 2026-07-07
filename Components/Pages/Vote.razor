@@ -1,0 +1,128 @@
+@page "/vote/mid"
+@page "/vote/final"
+@layout Layout.ParticipantLayout
+@attribute [Authorize(Roles = "Participant")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>@_pageTitle</PageTitle>
+
+<div class="page participant-page">
+    <header class="page-header">
+        <h1>@_pageTitle</h1>
+        <p class="subtitle">@_pageSubtitle</p>
+    </header>
+
+    @if (_saved)
+    {
+        <div class="alert-success">선택이 저장되었습니다.</div>
+    }
+
+    @if (string.IsNullOrEmpty(_session?.OppositeGender))
+    {
+        <div class="empty-state">
+            <p>성별 정보가 없어 투표할 수 없습니다.</p>
+            <p>스태프에게 문의해 주세요.</p>
+        </div>
+    }
+    else if (_candidates.Count == 0)
+    {
+        <div class="empty-state">
+            <p>선택할 수 있는 이성 참가자가 없습니다.</p>
+        </div>
+    }
+    else
+    {
+        <form method="post" action="/vote/save" class="vote-form">
+            <input type="hidden" name="voteType" value="@_voteType" />
+            <p class="vote-hint">마음에 드는 이성 한 분만 선택한 뒤 저장해 주세요.</p>
+
+            <div class="vote-list">
+                @foreach (var person in _candidates)
+                {
+                    <label class="vote-card @(person.Gender == "남" ? "vote-male" : "vote-female")">
+                        <input type="radio"
+                               name="targetId"
+                               value="@person.Id"
+                               checked="@(_selectedId == person.Id)" />
+                        <span class="vote-card-body">
+                            <span class="vote-name">@person.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(person.BirthDate))
+                            {
+                                <span class="vote-meta">@person.BirthDate</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(person.Workplace))
+                            {
+                                <span class="vote-meta">@person.Workplace</span>
+                            }
+                        </span>
+                        <span class="vote-check">✓</span>
+                    </label>
+                }
+            </div>
+
+            <button type="submit" class="btn btn-primary vote-submit">저장</button>
+        </form>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public bool Saved { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private ParticipantSession? _session;
+    private VoteType _voteType;
+    private string _pageTitle = "";
+    private string _pageSubtitle = "";
+    private bool _saved;
+    private List<ParticipantApplication> _candidates = [];
+    private int? _selectedId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _voteType = Navigation.Uri.Contains("/vote/final", StringComparison.OrdinalIgnoreCase)
+            ? VoteType.Final
+            : VoteType.Mid;
+
+        _pageTitle = _voteType == VoteType.Mid ? "중간투표" : "최종투표";
+        _pageSubtitle = _voteType == VoteType.Mid
+            ? "지금까지 대화한 분 중 마음에 드는 이성을 선택하세요"
+            : "최종적으로 마음에 드는 이성을 선택하세요";
+        _saved = Saved;
+
+        if (AuthState is null) return;
+
+        _session = ParticipantSession.FromClaims((await AuthState).User);
+        if (_session is null || string.IsNullOrEmpty(_session.OppositeGender))
+            return;
+
+        if (_voteType == VoteType.Mid && _session.IsHotelSuseongSquare)
+        {
+            Navigation.NavigateTo("/vote/final", forceLoad: false);
+            return;
+        }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _candidates = await db.Applications
+            .Where(a => a.EventId == _session.EventId
+                && a.IsConfirmed
+                && a.Gender == _session.OppositeGender
+                && a.Id != _session.ApplicationId)
+            .OrderBy(a => a.Name)
+            .ToListAsync();
+
+        _selectedId = await db.Votes
+            .Where(v => v.VoterApplicationId == _session.ApplicationId && v.VoteType == _voteType)
+            .Select(v => (int?)v.TargetApplicationId)
+            .FirstOrDefaultAsync();
+    }
+}

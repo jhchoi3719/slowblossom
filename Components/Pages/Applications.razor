@@ -1,0 +1,812 @@
+@page "/applications"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>참가자 신청서</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="@_homeUrl" class="back-link">← 메뉴</a>
+        <h1>참가자 신청서</h1>
+        <p class="subtitle">@_pageSubtitle</p>
+    </header>
+
+    <div class="date-tabs">
+        @foreach (var evt in _events)
+        {
+            <a class="date-tab @(EventId == evt.Id ? "active" : "")"
+               href="@GetPageUrl(evt.Id)">
+                <span class="tab-date">@evt.TabLabel</span>
+                <span class="tab-count">@(evt.Applications.Count)건</span>
+            </a>
+        }
+        <a class="date-tab add-tab" href="@GetPageUrl(extraQuery: "addDate=true")">
+            + 날짜
+        </a>
+    </div>
+
+    @if (_venue is null)
+    {
+        <div class="empty-state">
+            <p>장소를 먼저 선택해 주세요.</p>
+            <a class="btn btn-primary" href="/home">장소 선택으로 이동</a>
+        </div>
+    }
+    else if (AddDate)
+    {
+        <div class="card form-card">
+            <h2>행사 추가 · @VenueHelper.DisplayName(_venue.Value)</h2>
+            <form method="post" action="/applications/add-date">
+                <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
+                @if (_venue == EventVenue.UnoCoffee)
+                {
+                    <input type="hidden" name="eventKind" value="fixed" />
+                    <div class="form-grid">
+                        <label class="full-width">
+                            행사명 (선택)
+                            <input type="text" name="title" class="input" placeholder="예: 7월 로테이션 소개팅" />
+                        </label>
+                        <label>
+                            행사 날짜
+                            <input type="date" name="eventDate" class="input"
+                                   value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                        </label>
+                    </div>
+                }
+                else
+                {
+                    <input type="hidden" name="eventKind" value="poll" />
+                    <div class="form-grid">
+                        <label class="full-width">
+                            행사명 (선택)
+                            <input type="text" name="title" class="input" placeholder="예: 7월 호텔수성스퀘어 소개팅" />
+                        </label>
+                        <label>
+                            후보일 1
+                            <input type="date" name="candidateDates" class="input" required />
+                        </label>
+                        <label>
+                            후보일 2
+                            <input type="date" name="candidateDates" class="input" required />
+                        </label>
+                        <label>
+                            후보일 3
+                            <input type="date" name="candidateDates" class="input" />
+                        </label>
+                    </div>
+                    <p class="form-help">후보일 2개 이상 입력 · 신청 시 참여 가능일을 받습니다</p>
+                }
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">추가</button>
+                    <a class="btn btn-secondary" href="@GetPageUrl()">취소</a>
+                </div>
+            </form>
+            @if (!string.IsNullOrEmpty(_formError))
+            {
+                <p class="error-text">@_formError</p>
+            }
+        </div>
+    }
+
+    else if (_selectedEvent is null)
+    {
+        <div class="empty-state">
+            <p>등록된 행사 날짜가 없습니다.</p>
+            <p>위 <strong>+ 날짜</strong> 버튼으로 날짜를 먼저 추가하세요.</p>
+        </div>
+    }
+    else
+    {
+        <div class="summary-bar">
+            <span class="summary-item total">총 @(_selectedEvent.Applications.Count)건</span>
+            @if (_selectedEvent.Kind == EventKind.DatePoll)
+            {
+                <span class="summary-item poll">@_selectedEvent.Title</span>
+            }
+            <span class="summary-date">@_selectedEvent.FormattedDate</span>
+            @if (_selectedEvent.Kind == EventKind.FixedDate && _venue == EventVenue.UnoCoffee)
+            {
+                <a class="btn btn-sm btn-secondary" href="@GetPageUrl(_selectedEvent.Id, "editDate=true")">날짜 수정</a>
+            }
+            <form method="post" action="/events/delete" class="inline-form summary-delete-form"
+                  onsubmit="return confirm('이 행사와 등록된 신청서가 모두 삭제됩니다. 계속할까요?');">
+                <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                <input type="hidden" name="returnPage" value="applications" />
+                <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue!.Value)" />
+                <button type="submit" class="btn btn-sm btn-danger">삭제</button>
+            </form>
+        </div>
+
+        @if (DateUpdated)
+        {
+            <div class="alert-success">행사 날짜가 변경되었습니다. 확정된 참가자 로그인 ID도 새 날짜 기준으로 안내해 주세요.</div>
+        }
+
+        @if (EditDate && _selectedEvent.Kind == EventKind.FixedDate && _venue == EventVenue.UnoCoffee)
+        {
+            <div class="card form-card event-date-edit-card">
+                <h2>행사 날짜 수정</h2>
+                <form method="post" action="/applications/update-date">
+                    <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                    <div class="form-grid">
+                        <label>
+                            행사 날짜
+                            <input type="date" name="eventDate" class="input"
+                                   value="@_selectedEvent.EventDate.ToString("yyyy-MM-dd")" required />
+                        </label>
+                    </div>
+                    <p class="form-help">날짜를 바꾸면 확정 참가자 로그인 ID(이름+YYMMDD)도 함께 바뀝니다.</p>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <a class="btn btn-secondary" href="@GetPageUrl(_selectedEvent.Id)">취소</a>
+                    </div>
+                </form>
+                @if (!string.IsNullOrEmpty(_dateEditError))
+                {
+                    <p class="error-text">@_dateEditError</p>
+                }
+            </div>
+        }
+
+        @if (Finalized)
+        {
+            <div class="alert-success">실행일이 확정되었습니다. 해당 날짜에 가능한 참가자만 확정할 수 있습니다.</div>
+        }
+        @if (!string.IsNullOrEmpty(_confirmError))
+        {
+            <div class="error-text">@_confirmError</div>
+        }
+
+        @if (_selectedEvent.Kind == EventKind.DatePoll)
+        {
+            <section class="poll-summary-section">
+                <h2 class="poll-summary-heading">후보날짜별 가능 인원</h2>
+                <div class="poll-date-counts">
+                    @foreach (var candidate in _selectedEvent.CandidateDates.OrderBy(c => c.SortOrder))
+                    {
+                        var count = _selectedEvent.Applications.Count(a =>
+                            a.Availabilities.Any(v => v.AvailableDate.Date == candidate.EventDate.Date));
+                        <div class="poll-date-count @( _selectedEvent.FinalizedDate?.Date == candidate.EventDate.Date ? "finalized" : "")">
+                            <span class="poll-date-label">@candidate.ShortLabel</span>
+                            <span class="poll-date-number">@(count)명</span>
+                        </div>
+                    }
+                </div>
+
+                @if (EventDateHelper.IsPollAwaitingFinalization(_selectedEvent))
+                {
+                    <form method="post" action="/applications/finalize-poll" class="poll-finalize-form">
+                        <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                        <label>
+                            실행일 확정
+                            <select name="finalizedDate" class="input" required>
+                                <option value="">날짜 선택</option>
+                                @foreach (var candidate in _selectedEvent.CandidateDates.OrderBy(c => c.SortOrder))
+                                {
+                                    <option value="@candidate.EventDate.ToString("yyyy-MM-dd")">
+                                        @candidate.EventDate.ToString("M월 d일 (ddd)") (@(_selectedEvent.Applications.Count(a => a.Availabilities.Any(v => v.AvailableDate.Date == candidate.EventDate.Date)))명)
+                                    </option>
+                                }
+                            </select>
+                        </label>
+                        <button type="submit" class="btn btn-primary btn-sm">실행일 확정</button>
+                    </form>
+                    <p class="poll-help">신청을 모두 받은 뒤, 가능 인원이 가장 적절한 날짜를 선택하세요.</p>
+                }
+                else if (_selectedEvent.FinalizedDate.HasValue)
+                {
+                    <p class="poll-finalized-note">
+                        로그인 ID 예: @ParticipantAuthService.FormatLoginId("홍길동", _selectedEvent.FinalizedDate.Value)
+                    </p>
+                }
+            </section>
+        }
+
+        <div class="toolbar toolbar-actions">
+            <a class="btn btn-primary" href="@GetPageUrl(_selectedEvent.Id, "addApplication=true")">+ 신청서 추가</a>
+            <a class="btn btn-secondary" href="@GetPageUrl(_selectedEvent.Id, "bulkAdd=true")">일괄 추가</a>
+            @if (_bulkSmsTargetCount > 0)
+            {
+                <button type="button"
+                        class="btn btn-secondary"
+                        data-numbers='@System.Text.Json.JsonSerializer.Serialize(_bulkSmsNumbers)'
+                        onclick="openBulkSms(JSON.parse(this.dataset.numbers))">
+                    일괄 메시지 보내기 (@_bulkSmsTargetCount)
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-secondary" disabled>일괄 메시지 보내기 (0)</button>
+            }
+        </div>
+        <div class="toolbar toolbar-actions">
+            <a class="btn @GetGenderFilterButtonClass(null)" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(gender: ""))">전체 (@_totalApplicationCount)</a>
+            <a class="btn @GetGenderFilterButtonClass("남")" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(gender: "남"))">남 (@_maleApplicationCount)</a>
+            <a class="btn @GetGenderFilterButtonClass("여")" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(gender: "여"))">여 (@_femaleApplicationCount)</a>
+        </div>
+        <div class="toolbar toolbar-actions">
+            <a class="btn @GetConfirmFilterButtonClass(null)" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery())">전체 (@_totalApplicationCount)</a>
+            <a class="btn @GetConfirmFilterButtonClass("confirmed")" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(confirmed: "confirmed"))">확정 (@_confirmedApplicationCount)</a>
+            <a class="btn @GetConfirmFilterButtonClass("pending")" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(confirmed: "pending"))">미확정 (@_pendingApplicationCount)</a>
+        </div>
+
+        @if (BulkImported > 0)
+        {
+            <div class="alert-success">@(BulkImported)건의 신청서가 추가되었습니다.</div>
+        }
+        @if (!string.IsNullOrEmpty(_bulkError))
+        {
+            <div class="error-text bulk-import-error">@_bulkError</div>
+        }
+
+        @if (BulkAdd)
+        {
+            <div class="card form-card bulk-import-card">
+                <h2>일괄 추가</h2>
+                <p class="bulk-import-hint">구글 시트에서 데이터를 복사(Ctrl+C)한 뒤 아래에 붙여넣기(Ctrl+V)하세요.</p>
+                <p class="bulk-import-cols">
+                    @if (_selectedEvent.Kind == EventKind.DatePoll)
+                    {
+                        <text>컬럼 순서: 이름 · 생년월일 · 성별 · 연락처 · 거주지 · 직장 · 가능 날짜(12, 19) · 원하는 연령대 · 관심사 · 음주(o/x) · 흡연(o/x)</text>
+                    }
+                    else
+                    {
+                        <text>컬럼 순서: 이름 · 생년월일 · 성별 · 연락처 · 거주지 · 직장 · 원하는 연령대 · 관심사 · 음주(o/x) · 흡연(o/x)</text>
+                    }
+                </p>
+                <form method="post" action="/applications/bulk-import">
+                    <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                    <textarea name="pasteData"
+                              class="bulk-import-textarea input"
+                              rows="14"
+                              placeholder="시트에서 행을 선택해 복사한 뒤 여기에 붙여넣으세요.&#10;탭으로 구분된 데이터가 한 번에 여러 명 추가됩니다."></textarea>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">추가</button>
+                        <a class="btn btn-secondary" href="@GetPageUrl(_selectedEvent.Id)">취소</a>
+                    </div>
+                </form>
+            </div>
+        }
+
+        @if (AddApplication || EditId.HasValue)
+        {
+            <div class="card form-card">
+                <h2>@(EditId.HasValue ? "신청서 수정" : "신청서 추가")</h2>
+                <form method="post" action="/applications/save">
+                    <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                    @if (EditId.HasValue)
+                    {
+                        <input type="hidden" name="applicationId" value="@EditId" />
+                    }
+                    <div class="form-grid">
+                        <label>
+                            이름 <span class="required">*</span>
+                            <input type="text" name="name" class="input" placeholder="홍길동"
+                                   value="@_editApplication.Name" required />
+                        </label>
+                        <label>
+                            생년월일
+                            <input type="text" name="birthDate" class="input" placeholder="950315"
+                                   maxlength="6" inputmode="numeric" pattern="\d{6}"
+                                   value="@_editApplication.BirthDate" />
+                        </label>
+                        <label>
+                            성별
+                            <select name="gender" class="input">
+                                <option value="" selected="@(string.IsNullOrWhiteSpace(_editApplication.Gender))">선택</option>
+                                <option value="남" selected="@(_editApplication.Gender == "남")">남</option>
+                                <option value="여" selected="@(_editApplication.Gender == "여")">여</option>
+                            </select>
+                        </label>
+                        <label>
+                            연락처
+                            <input type="text" name="phone" class="input" placeholder="010-1234-5678"
+                                   value="@_editApplication.Phone" />
+                        </label>
+                        <label>
+                            거주지
+                            <input type="text" name="residence" class="input" placeholder="서울 강남구"
+                                   value="@_editApplication.Residence" />
+                        </label>
+                        <label>
+                            직장
+                            <input type="text" name="workplace" class="input" placeholder="회사명"
+                                   value="@_editApplication.Workplace" />
+                        </label>
+                        <label>
+                            원하는 연령대
+                            <input type="text" name="preferredAgeRange" class="input" placeholder="27~32세"
+                                   value="@_editApplication.PreferredAgeRange" />
+                        </label>
+                        <label class="full-width">
+                            관심사
+                            <input type="text" name="interests" class="input" placeholder="운동, 여행, 맛집"
+                                   value="@_editApplication.Interests" />
+                        </label>
+                        <label>
+                            음주
+                            <div class="ox-group">
+                                <label class="ox-option">
+                                    <input type="radio" name="drinking" value="true"
+                                           checked="@(_editApplication.Drinking == true)" />
+                                    O
+                                </label>
+                                <label class="ox-option">
+                                    <input type="radio" name="drinking" value="false"
+                                           checked="@(_editApplication.Drinking == false)" />
+                                    X
+                                </label>
+                            </div>
+                        </label>
+                        <label>
+                            흡연
+                            <div class="ox-group">
+                                <label class="ox-option">
+                                    <input type="radio" name="smoking" value="true"
+                                           checked="@(_editApplication.Smoking == true)" />
+                                    O
+                                </label>
+                                <label class="ox-option">
+                                    <input type="radio" name="smoking" value="false"
+                                           checked="@(_editApplication.Smoking == false)" />
+                                    X
+                                </label>
+                            </div>
+                        </label>
+                        @if (_selectedEvent.Kind == EventKind.DatePoll)
+                        {
+                            <div class="full-width availability-group">
+                                <span class="availability-label">참여 가능일 <span class="required">*</span></span>
+                                <div class="availability-options">
+                                    @foreach (var candidate in _selectedEvent.CandidateDates.OrderBy(c => c.SortOrder))
+                                    {
+                                        var dateValue = candidate.EventDate.ToString("yyyy-MM-dd");
+                                        <label class="availability-option">
+                                            <input type="checkbox"
+                                                   name="availableDates"
+                                                   value="@dateValue"
+                                                   checked="@_editAvailableDates.Contains(candidate.EventDate.Date)" />
+                                            @candidate.ShortLabel
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">@(EditId.HasValue ? "저장" : "추가")</button>
+                        <a class="btn btn-secondary" href="@GetPageUrl(_selectedEvent.Id)">취소</a>
+                    </div>
+                </form>
+                @if (!string.IsNullOrEmpty(_formError))
+                {
+                    <p class="error-text">@_formError</p>
+                }
+            </div>
+        }
+
+        @if (_visibleApplications.Count == 0)
+        {
+            <div class="empty-state">
+                @if (!string.IsNullOrWhiteSpace(Gender))
+                {
+                    <p>@Gender 신청자가 없습니다.</p>
+                    <p>다른 성별 필터 또는 <strong>전체</strong>를 선택해 주세요.</p>
+                }
+                else
+                {
+                    <p>이 날짜에 등록된 신청서가 없습니다.</p>
+                    <p><strong>+ 신청서 추가</strong>로 항목을 입력하세요.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="participant-list">
+                @foreach (var app in _visibleApplications)
+                {
+                    <div class="participant-card application-card" id="app-@app.Id">
+                        <div class="participant-header">
+                            <span class="participant-name">@app.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(app.Gender))
+                            {
+                                <span class="participant-tag gender-tag-@(app.Gender == "남" ? "male" : "female")">@app.Gender</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.BirthDate))
+                            {
+                                <span class="participant-tag">@app.BirthDate</span>
+                            }
+                        </div>
+                        <div class="participant-body">
+                            @if (!string.IsNullOrWhiteSpace(app.Phone))
+                            {
+                                <div class="info-row">
+                                    <span class="label">연락처</span>
+                                    <a href="javascript:void(0)"
+                                       class="value link"
+                                       onclick="openSms('@NormalizePhoneForSms(app.Phone!)')">@app.Phone</a>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.Residence))
+                            {
+                                <div class="info-row">
+                                    <span class="label">거주지</span>
+                                    <span class="value">@app.Residence</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.Workplace))
+                            {
+                                <div class="info-row">
+                                    <span class="label">직장</span>
+                                    <span class="value">@app.Workplace</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.PreferredAgeRange))
+                            {
+                                <div class="info-row">
+                                    <span class="label">원하는 연령대</span>
+                                    <span class="value">@app.PreferredAgeRange</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.Interests))
+                            {
+                                <div class="info-row">
+                                    <span class="label">관심사</span>
+                                    <span class="value">@app.Interests</span>
+                                </div>
+                            }
+                            <div class="info-row">
+                                <span class="label">음주</span>
+                                <span class="value ox-value">@ParticipantApplication.OxLabel(app.Drinking)</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">흡연</span>
+                                <span class="value ox-value">@ParticipantApplication.OxLabel(app.Smoking)</span>
+                            </div>
+                            @if (_selectedEvent.Kind == EventKind.DatePoll)
+                            {
+                                <div class="info-row">
+                                    <span class="label">가능일</span>
+                                    <span class="value">@EventDateHelper.FormatAvailableDates(app.Availabilities.Select(a => a.AvailableDate))</span>
+                                </div>
+                            }
+                            @if (app.IsConfirmed && _selectedEvent.Kind == EventKind.FixedDate)
+                            {
+                                <div class="info-row">
+                                    <span class="label">로그인 ID</span>
+                                    <span class="value login-id">@ParticipantAuthService.FormatLoginId(app.Name, _selectedEvent.EventDate)</span>
+                                </div>
+                            }
+                            @if (app.IsConfirmed && _selectedEvent.FinalizedDate.HasValue
+                                && app.Availabilities.Any(a => a.AvailableDate.Date == _selectedEvent.FinalizedDate.Value.Date))
+                            {
+                                <div class="info-row">
+                                    <span class="label">로그인 ID</span>
+                                    <span class="value login-id">@ParticipantAuthService.FormatLoginId(app.Name, _selectedEvent.FinalizedDate.Value)</span>
+                                </div>
+                            }
+                            <div class="info-row contact-row">
+                                <span class="label">연락</span>
+                                <div class="ox-toggle">
+                                    <form method="post" action="/applications/set-contact" class="inline-form">
+                                        <input type="hidden" name="applicationId" value="@app.Id" />
+                                        <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                                        @ListFilterHiddenFields
+                                        <input type="hidden" name="contacted" value="true" />
+                                        <button type="submit" class="ox-btn @(app.AllowContact == true ? "active" : "")">O</button>
+                                    </form>
+                                    <form method="post" action="/applications/set-contact" class="inline-form">
+                                        <input type="hidden" name="applicationId" value="@app.Id" />
+                                        <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                                        @ListFilterHiddenFields
+                                        <input type="hidden" name="contacted" value="false" />
+                                        <button type="submit" class="ox-btn @(app.AllowContact == false ? "active" : "")">X</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="info-row confirm-row">
+                                <span class="label">확정</span>
+                                @if (app.IsConfirmed)
+                                {
+                                    <div class="confirm-actions">
+                                        <span class="confirm-badge">확정됨</span>
+                                        <form method="post" action="/applications/set-confirmed" class="inline-form">
+                                            <input type="hidden" name="applicationId" value="@app.Id" />
+                                            <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                                            @ListFilterHiddenFields
+                                            <input type="hidden" name="confirmed" value="false" />
+                                            <button type="submit" class="btn btn-sm btn-secondary">취소</button>
+                                        </form>
+                                    </div>
+                                }
+                                else if (_selectedEvent.Kind == EventKind.DatePoll && EventDateHelper.IsPollAwaitingFinalization(_selectedEvent))
+                                {
+                                    <span class="confirm-hint">실행일 확정 후 가능</span>
+                                }
+                                else if (_selectedEvent.Kind == EventKind.DatePoll && !EventDateHelper.CanConfirmOnPoll(app))
+                                {
+                                    <span class="confirm-hint">실행일에 불가</span>
+                                }
+                                else
+                                {
+                                    <form method="post" action="/applications/set-confirmed" class="inline-form">
+                                        <input type="hidden" name="applicationId" value="@app.Id" />
+                                        <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                                        @ListFilterHiddenFields
+                                        <input type="hidden" name="confirmed" value="true" />
+                                        <button type="submit" class="btn btn-sm confirm-btn">확정</button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                        <div class="participant-actions">
+                            <a class="btn btn-sm" href="@GetPageUrl(_selectedEvent.Id, $"editId={app.Id}")">수정</a>
+                            <form method="post" action="/applications/delete" class="inline-form">
+                                <input type="hidden" name="applicationId" value="@app.Id" />
+                                <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                                <button type="submit" class="btn btn-sm btn-danger">삭제</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? EventId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool AddDate { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool AddApplication { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool BulkAdd { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int BulkImported { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? EditId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Finalized { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool EditDate { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool DateUpdated { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Gender { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Confirmed { get; set; }
+
+    [SupplyParameterFromQuery(Name = "venue")]
+    public string? Venue { get; set; }
+
+    private EventVenue? _venue;
+    private string _homeUrl = "/home";
+    private string _pageSubtitle = "";
+    private List<ParticipantApplication> _visibleApplications = [];
+    private int _maleApplicationCount;
+    private int _femaleApplicationCount;
+    private int _totalApplicationCount;
+    private int _confirmedApplicationCount;
+    private int _pendingApplicationCount;
+    private List<string> _bulkSmsNumbers = [];
+    private int _bulkSmsTargetCount;
+
+    private List<Event> _events = [];
+    private Event? _selectedEvent;
+    private ApplicationEditModel _editApplication = new();
+    private HashSet<DateTime> _editAvailableDates = [];
+
+    private string _formError => Error switch
+    {
+        "duplicate" => "이미 등록된 날짜입니다.",
+        "name" => "이름을 입력해 주세요.",
+        "pollneed" => "가능일 설문은 후보일을 2개 이상 입력해 주세요.",
+        "date" => "행사 날짜를 입력해 주세요.",
+        "availability" => "참여 가능일을 1개 이상 선택해 주세요.",
+        "invalidfinal" => "후보일 중에서만 실행일을 선택할 수 있습니다.",
+        _ => ""
+    };
+
+    private string _bulkError => Error switch
+    {
+        "empty" => "붙여넣을 데이터가 없습니다.",
+        "noparse" => "추가할 수 있는 신청서를 찾지 못했습니다. 컬럼 순서와 탭 구분을 확인해 주세요.",
+        "availability" => "가능 날짜 컬럼(예: 12, 19)이 후보일과 맞는지 확인해 주세요.",
+        _ => ""
+    };
+
+    private string _confirmError => Error switch
+    {
+        "confirm" => "실행일에 참여 가능한 참가자만 확정할 수 있습니다.",
+        _ => ""
+    };
+
+    private string _dateEditError => Error switch
+    {
+        "duplicate" when EditDate => "이미 등록된 날짜입니다.",
+        "date" when EditDate => "행사 날짜를 입력해 주세요.",
+        _ => ""
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _venue = VenueHelper.TryParse(Venue);
+        _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
+        _pageSubtitle = _venue.HasValue
+            ? $"{VenueHelper.DisplayName(_venue.Value)} · {VenueHelper.ShortDescription(_venue.Value)}"
+            : "장소를 선택한 뒤 신청서를 관리합니다";
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var allEvents = await db.Events
+            .Include(e => e.Applications)
+                .ThenInclude(a => a.Availabilities)
+            .Include(e => e.CandidateDates)
+            .OrderBy(e => e.EventDate)
+            .ToListAsync();
+
+        _events = _venue.HasValue
+            ? VenueHelper.FilterByVenue(allEvents, _venue.Value).ToList()
+            : [];
+
+        if (EventId.HasValue)
+            _selectedEvent = _events.FirstOrDefault(e => e.Id == EventId);
+        else if (_events.Count > 0)
+        {
+            _selectedEvent = _events[0];
+            EventId = _selectedEvent.Id;
+        }
+
+        _visibleApplications = (_selectedEvent?.Applications ?? [])
+            .Where(a => string.IsNullOrWhiteSpace(Gender) || a.Gender == Gender)
+            .Where(a => Confirmed switch
+            {
+                "confirmed" => a.IsConfirmed,
+                "pending" => !a.IsConfirmed,
+                _ => true
+            })
+            .OrderByDescending(a => a.CreatedAt)
+            .ToList();
+        _totalApplicationCount = _selectedEvent?.Applications.Count ?? 0;
+        _maleApplicationCount = _selectedEvent?.Applications.Count(a => a.Gender == "남") ?? 0;
+        _femaleApplicationCount = _selectedEvent?.Applications.Count(a => a.Gender == "여") ?? 0;
+        _confirmedApplicationCount = _selectedEvent?.Applications.Count(a => a.IsConfirmed) ?? 0;
+        _pendingApplicationCount = _selectedEvent?.Applications.Count(a => !a.IsConfirmed) ?? 0;
+        var bulkSmsNumbers = (_selectedEvent?.Applications ?? [])
+            .Where(a => a.AllowContact == false && !string.IsNullOrWhiteSpace(a.Phone))
+            .Select(a => NormalizePhoneForSms(a.Phone!))
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct()
+            .ToList();
+        _bulkSmsNumbers = bulkSmsNumbers;
+        _bulkSmsTargetCount = bulkSmsNumbers.Count;
+
+        if (EditId.HasValue)
+            await LoadEditFormAsync();
+        else if (AddApplication)
+        {
+            _editApplication = new ApplicationEditModel();
+            _editAvailableDates = [];
+        }
+    }
+
+    private async Task LoadEditFormAsync()
+    {
+        if (!EditId.HasValue) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var application = await db.Applications
+            .Include(a => a.Availabilities)
+            .FirstOrDefaultAsync(a => a.Id == EditId.Value);
+        if (application is null) return;
+
+        _editApplication = new ApplicationEditModel
+        {
+            Name = application.Name,
+            BirthDate = application.BirthDate,
+            Gender = application.Gender,
+            Phone = application.Phone,
+            Residence = application.Residence,
+            Workplace = application.Workplace,
+            PreferredAgeRange = application.PreferredAgeRange,
+            Interests = application.Interests,
+            Drinking = application.Drinking,
+            Smoking = application.Smoking
+        };
+        _editAvailableDates = application.Availabilities
+            .Select(a => a.AvailableDate.Date)
+            .ToHashSet();
+    }
+
+    private string GetPageUrl(int? eventId = null, string? extraQuery = null) =>
+        _venue.HasValue
+            ? VenueHelper.AdminPageUrl("/applications", _venue.Value, eventId, extraQuery)
+            : "/applications";
+
+    private string GetGenderFilterButtonClass(string? targetGender)
+    {
+        var selected = string.IsNullOrWhiteSpace(targetGender)
+            ? string.IsNullOrWhiteSpace(Gender)
+            : string.Equals(Gender, targetGender, StringComparison.Ordinal);
+        return selected ? "btn-primary" : "btn-secondary";
+    }
+
+    private string GetConfirmFilterButtonClass(string? targetConfirmed)
+    {
+        var selected = string.IsNullOrWhiteSpace(targetConfirmed)
+            ? string.IsNullOrWhiteSpace(Confirmed)
+            : string.Equals(Confirmed, targetConfirmed, StringComparison.OrdinalIgnoreCase);
+        return selected ? "btn-primary" : "btn-secondary";
+    }
+
+    private string? BuildFilterQuery(string? gender = null, string? confirmed = null)
+    {
+        var query = new List<string>();
+        var effectiveGender = gender ?? Gender;
+        var effectiveConfirmed = confirmed ?? Confirmed;
+
+        if (!string.IsNullOrWhiteSpace(effectiveGender))
+            query.Add($"gender={Uri.EscapeDataString(effectiveGender)}");
+        if (!string.IsNullOrWhiteSpace(effectiveConfirmed))
+            query.Add($"confirmed={Uri.EscapeDataString(effectiveConfirmed)}");
+
+        return query.Count == 0 ? null : string.Join("&", query);
+    }
+
+    private static string NormalizePhoneForSms(string phone) =>
+        new(phone.Where(c => char.IsDigit(c) || c == '+').ToArray());
+
+    private RenderFragment ListFilterHiddenFields => builder =>
+    {
+        if (!string.IsNullOrWhiteSpace(Gender))
+        {
+            builder.OpenElement(0, "input");
+            builder.AddAttribute(1, "type", "hidden");
+            builder.AddAttribute(2, "name", "gender");
+            builder.AddAttribute(3, "value", Gender);
+            builder.CloseElement();
+        }
+
+        if (!string.IsNullOrWhiteSpace(Confirmed))
+        {
+            builder.OpenElement(4, "input");
+            builder.AddAttribute(5, "type", "hidden");
+            builder.AddAttribute(6, "name", "confirmedFilter");
+            builder.AddAttribute(7, "value", Confirmed);
+            builder.CloseElement();
+        }
+    };
+
+    private class ApplicationEditModel
+    {
+        public string Name { get; set; } = "";
+        public string? BirthDate { get; set; }
+        public string? Gender { get; set; }
+        public string? Phone { get; set; }
+        public string? Residence { get; set; }
+        public string? Workplace { get; set; }
+        public string? PreferredAgeRange { get; set; }
+        public string? Interests { get; set; }
+        public bool? Drinking { get; set; }
+        public bool? Smoking { get; set; }
+    }
+}

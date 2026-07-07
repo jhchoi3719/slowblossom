@@ -1,0 +1,128 @@
+@page "/home"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+
+<PageTitle>메뉴</PageTitle>
+
+<div class="page">
+    @if (_venue is null)
+    {
+        <header class="page-header">
+            <h1>행사 장소 선택</h1>
+            <p class="subtitle">관리할 장소를 선택하세요</p>
+        </header>
+
+        <div class="venue-list">
+            <a href="@VenueHelper.AdminHomeUrl(EventVenue.UnoCoffee)" class="venue-card venue-uno">
+                <span class="venue-icon">☕</span>
+                <div class="venue-text">
+                    <span class="venue-title">우노커피</span>
+                    <span class="venue-desc">날짜가 정해진 행사 · 신청서·투표·좌석</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
+
+            <a href="@VenueHelper.AdminHomeUrl(EventVenue.HotelSuseongSquare)" class="venue-card venue-suseong">
+                <span class="venue-icon">🏨</span>
+                <div class="venue-text">
+                    <span class="venue-title">호텔수성스퀘어</span>
+                    <span class="venue-desc">여러 날 중 하루 확정 · 가능일 설문 신청</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
+        </div>
+    }
+    else
+    {
+        <header class="page-header">
+            <a href="/home" class="back-link">← 장소 선택</a>
+            <h1>@VenueHelper.DisplayName(_venue.Value)</h1>
+            <p class="subtitle">@VenueHelper.ShortDescription(_venue.Value)</p>
+        </header>
+
+        <div class="menu-list">
+            <a href="@VenueHelper.AdminPageUrl("/applications", _venue.Value)" class="menu-card">
+                <span class="menu-icon">📝</span>
+                <div class="menu-text">
+                    <span class="menu-title">참가자 신청서</span>
+                    <span class="menu-desc">신청서 확인 및 관리</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
+
+            <a href="@VenueHelper.AdminPageUrl("/participants", _venue.Value)" class="menu-card">
+                <span class="menu-icon">👥</span>
+                <div class="menu-text">
+                    <span class="menu-title">참가자 리스트</span>
+                    <span class="menu-desc">확정된 참가자 목록</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
+
+            @if (_venue == EventVenue.UnoCoffee)
+            {
+                <a href="@VenueHelper.AdminPageUrl("/vote-results/mid", _venue.Value)" class="menu-card">
+                    <span class="menu-icon">💗</span>
+                    <div class="menu-text">
+                        <span class="menu-title">중간투표 결과</span>
+                        <span class="menu-desc">누가 누구를 선택했는지 확인</span>
+                    </div>
+                    <span class="menu-arrow">›</span>
+                </a>
+            }
+
+            <a href="@VenueHelper.AdminPageUrl("/vote-results/final", _venue.Value)" class="menu-card">
+                <span class="menu-icon">💖</span>
+                <div class="menu-text">
+                    <span class="menu-title">최종투표 결과</span>
+                    <span class="menu-desc">최종 선택 결과 확인</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
+
+            <a href="@VenueHelper.AdminPageUrl("/seating/initial", _venue.Value)" class="menu-card">
+                <span class="menu-icon">🪑</span>
+                <div class="menu-text">
+                    <span class="menu-title">초기 좌석 배치</span>
+                    <span class="menu-desc">행사 시작 전 AI 1:1 좌석 매칭</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
+
+            @if (_venue == EventVenue.UnoCoffee)
+            {
+                <a href="@VenueHelper.AdminPageUrl("/seating/mid", _venue.Value)" class="menu-card">
+                    <span class="menu-icon">🪑</span>
+                    <div class="menu-text">
+                        <span class="menu-title">중간투표 좌석 배치</span>
+                        <span class="menu-desc">중간투표 결과 반영 1:1 좌석 매칭</span>
+                    </div>
+                    <span class="menu-arrow">›</span>
+                </a>
+            }
+
+            <a href="@VenueHelper.AdminPageUrl("/admin/questions", _venue.Value)" class="menu-card">
+                <span class="menu-icon">💬</span>
+                <div class="menu-text">
+                    <span class="menu-title">질문카드</span>
+                    <span class="menu-desc">대화 주제 목록·수정</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "venue")]
+    public string? Venue { get; set; }
+
+    private EventVenue? _venue;
+
+    protected override void OnParametersSet()
+    {
+        _venue = VenueHelper.TryParse(Venue);
+    }
+}
