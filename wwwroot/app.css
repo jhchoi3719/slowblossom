@@ -1772,8 +1772,15 @@ h1:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px 16px;
+    padding:
+        24px 16px
+        calc(24px + env(safe-area-inset-bottom));
     background: linear-gradient(180deg, #fff5f8 0%, #ffffff 100%);
+}
+
+.survey-public-page.survey-take-page {
+    align-items: stretch;
+    justify-content: flex-start;
 }
 
 .survey-public-card {
@@ -1820,28 +1827,43 @@ h1:focus {
 
 .survey-create-form {
     display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
 }
 
 .survey-create-form .input {
-    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    font-size: 16px;
+}
+
+.survey-create-form .btn {
+    align-self: flex-start;
+    min-width: 148px;
+    min-height: 44px;
 }
 
 .survey-admin-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 }
 
 .survey-question-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 }
 
 .survey-add-question-btn {
-    margin-top: 12px;
+    margin-top: 16px;
     display: inline-block;
 }
 
@@ -1850,14 +1872,22 @@ h1:focus {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px;
+    padding: 18px;
     box-shadow: var(--shadow);
+}
+
+.survey-admin-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 4px;
 }
 
 .survey-admin-card-head h2,
 .survey-question-card h3 {
-    margin: 0 0 4px;
+    margin: 0;
     font-size: 17px;
+    line-height: 1.4;
 }
 
 .survey-admin-meta,
@@ -1869,8 +1899,8 @@ h1:focus {
 }
 
 .survey-link-box {
-    margin: 12px 0;
-    padding: 10px 12px;
+    margin: 14px 0 18px;
+    padding: 12px 14px;
     background: #fafafa;
     border-radius: 8px;
     border: 1px dashed var(--border);
@@ -1880,7 +1910,7 @@ h1:focus {
     display: block;
     font-size: 12px;
     color: var(--text-muted);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 .survey-link-url {
@@ -1906,9 +1936,9 @@ h1:focus {
 .survey-edit-header-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
-    margin-top: 8px;
+    margin-top: 12px;
 }
 
 .survey-admin-card.is-completed {
@@ -1933,27 +1963,30 @@ h1:focus {
 .survey-admin-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
+    margin-top: 4px;
 }
 
 .survey-edit-section {
-    margin-bottom: 24px;
-    padding: 16px;
+    margin-bottom: 28px;
+    padding: 18px;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
 }
 
 .section-title {
-    margin: 0 0 4px;
+    margin: 0 0 8px;
     font-size: 18px;
+    line-height: 1.4;
 }
 
 .section-desc {
-    margin: 0 0 16px;
+    margin: 0 0 20px;
     color: var(--text-muted);
     font-size: 13px;
+    line-height: 1.5;
 }
 
 .section-head-row {
@@ -1965,9 +1998,14 @@ h1:focus {
 
 .field-label {
     display: block;
-    margin: 12px 0 6px;
+    margin: 16px 0 8px;
     font-size: 13px;
     font-weight: 600;
+}
+
+.survey-welcome-form .field-label:first-of-type,
+.survey-question-form .field-label:first-of-type {
+    margin-top: 0;
 }
 
 .textarea {
@@ -1979,25 +2017,38 @@ h1:focus {
 .survey-question-form {
     display: flex;
     flex-direction: column;
+    gap: 2px;
+}
+
+.survey-welcome-form .btn,
+.survey-question-form .btn {
+    margin-top: 12px;
+}
+
+.survey-welcome-form .input,
+.survey-welcome-form .textarea,
+.survey-question-form .input,
+.survey-question-form .textarea {
+    font-size: 16px;
 }
 
 .survey-question-checks {
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    margin: 12px 0;
+    margin: 16px 0;
 }
 
 .survey-option-inputs {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .survey-option-input-row {
     display: grid;
-    grid-template-columns: 64px 1fr auto;
-    gap: 8px;
+    grid-template-columns: 72px 1fr auto;
+    gap: 10px;
     align-items: center;
 }
 
@@ -2016,15 +2067,15 @@ h1:focus {
 .survey-option-add-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin-top: 14px;
+    margin-bottom: 8px;
 }
 
 .survey-option-input-row.is-custom-option {
     border: 1px dashed #f8bbd0;
     border-radius: 8px;
-    padding: 8px;
+    padding: 12px;
     background: #fff8fb;
 }
 
@@ -2043,9 +2094,10 @@ h1:focus {
 }
 
 .survey-question-form .survey-admin-actions {
-    margin-top: 8px;
-    padding-top: 16px;
+    margin-top: 16px;
+    padding-top: 18px;
     border-top: 1px solid var(--border);
+    gap: 10px;
 }
 
 .checkbox-label {
@@ -2078,8 +2130,8 @@ h1:focus {
 .survey-question-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin: 10px 0;
+    gap: 8px;
+    margin: 12px 0 14px;
 }
 
 .tag {
@@ -2116,10 +2168,11 @@ h1:focus {
 }
 
 .survey-option-preview {
-    margin: 0 0 12px;
+    margin: 0 0 14px;
     padding-left: 20px;
     color: var(--text-muted);
     font-size: 13px;
+    line-height: 1.5;
 }
 
 .survey-take-wrap {
@@ -2129,28 +2182,46 @@ h1:focus {
 }
 
 .survey-take-header {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     text-align: left;
+}
+
+.survey-take-header h1 {
+    margin: 10px 0 8px;
+    font-size: 22px;
+    line-height: 1.4;
+}
+
+.survey-take-header .subtitle {
+    margin: 0;
 }
 
 .survey-take-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 }
 
 .survey-take-item {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px;
+    padding: 18px;
     min-width: 0;
     overflow: hidden;
 }
 
 .survey-take-item h2 {
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     font-size: 16px;
+    line-height: 1.4;
+}
+
+.survey-take-item-head p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .required-mark {
@@ -2160,16 +2231,16 @@ h1:focus {
 .survey-take-options {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 14px;
     min-width: 0;
 }
 
 .survey-option-choice {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 12px;
+    padding: 12px 14px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: #fafafa;
@@ -2178,10 +2249,15 @@ h1:focus {
 
 .survey-option-choice-row {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 10px;
     min-width: 0;
     cursor: pointer;
+}
+
+.survey-option-choice-row input[type="radio"],
+.survey-option-choice-row input[type="checkbox"] {
+    margin-top: 2px;
 }
 
 .survey-option-choice-row span {
@@ -2226,14 +2302,15 @@ h1:focus {
 
 .survey-take-hint,
 .survey-take-note {
-    margin: 8px 0 0;
+    margin: 10px 0 0;
     font-size: 12px;
     color: var(--text-muted);
+    line-height: 1.5;
 }
 
 .survey-consent-section {
-    margin-top: 20px;
-    padding: 18px 16px;
+    margin-top: 24px;
+    padding: 20px 18px;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -2246,45 +2323,46 @@ h1:focus {
 }
 
 .survey-consent-title {
-    margin: 0 0 10px;
+    margin: 0 0 12px;
     font-size: 16px;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .survey-consent-desc {
-    margin: 0 0 14px;
+    margin: 0 0 18px;
     color: var(--text-muted);
     font-size: 14px;
     line-height: 1.6;
 }
 
 .survey-consent-choice {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .survey-consent-choice .survey-option-choice-row {
     align-items: flex-start;
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 
 .survey-consent-choice .survey-option-choice-row input[type="checkbox"] {
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
 .survey-phone-field {
-    margin-top: 4px;
+    margin-top: 8px;
 }
 
 .survey-phone-label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     font-size: 14px;
     font-weight: 600;
 }
 
 .survey-take-footer {
-    margin-top: 16px;
+    margin-top: 24px;
+    padding-bottom: 8px;
     text-align: center;
 }
 
@@ -2293,11 +2371,16 @@ h1:focus {
 }
 
 .survey-take-page {
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 .survey-take-form {
     width: 100%;
+}
+
+.survey-take-form .input,
+.survey-take-form .textarea {
+    font-size: 16px;
 }
 
 .survey-take-item.has-error {
@@ -2306,12 +2389,13 @@ h1:focus {
 }
 
 .survey-take-error {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .survey-submit-btn {
     width: 100%;
     min-height: 48px;
+    margin-top: 4px;
 }
 
 .survey-complete-card .survey-complete-icon {
@@ -2329,36 +2413,48 @@ h1:focus {
 }
 
 .survey-results-section {
-    margin-bottom: 24px;
+    margin-bottom: 28px;
+}
+
+.survey-results-section > .section-title {
+    margin-bottom: 16px;
 }
 
 .survey-results-question {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: 18px;
+    margin-bottom: 16px;
 }
 
 .survey-results-question-head {
     display: flex;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 
 .survey-results-question h3 {
-    margin: 0 0 4px;
+    margin: 0 0 6px;
     font-size: 16px;
+    line-height: 1.4;
 }
 
 .survey-results-question p {
     margin: 0;
     color: var(--text-muted);
     font-size: 13px;
+    line-height: 1.5;
+}
+
+.survey-results-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .survey-result-bar-row {
-    margin-bottom: 10px;
+    margin-bottom: 0;
 }
 
 .survey-result-bar-label {
@@ -2366,7 +2462,8 @@ h1:focus {
     justify-content: space-between;
     gap: 12px;
     font-size: 13px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    line-height: 1.4;
 }
 
 .survey-result-bar-count {
@@ -2392,11 +2489,11 @@ h1:focus {
 .survey-results-text-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .survey-results-text-item {
-    padding: 12px;
+    padding: 14px;
     background: #fafafa;
     border-radius: 8px;
     border: 1px solid var(--border);
@@ -2416,14 +2513,14 @@ h1:focus {
 .survey-response-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .survey-response-item {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 12px 14px;
+    padding: 14px 16px;
 }
 
 .survey-response-item summary {
@@ -2462,4 +2559,73 @@ h1:focus {
     font-size: 14px;
     line-height: 1.5;
     white-space: pre-wrap;
+}
+
+.survey-question-editor.survey-edit-section {
+    margin-bottom: 0;
+}
+
+.survey-complete-card h1 {
+    margin: 0 0 10px;
+    font-size: 22px;
+}
+
+.survey-complete-card p {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+@media (max-width: 520px) {
+    .survey-admin-card,
+    .survey-question-card,
+    .survey-edit-section,
+    .survey-take-item,
+    .survey-consent-section,
+    .survey-results-question {
+        padding: 16px;
+    }
+
+    .survey-create-form {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .survey-option-input-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fafafa;
+    }
+
+    .survey-option-input-row.is-custom-option {
+        background: #fff8fb;
+        border-style: dashed;
+        border-color: #f8bbd0;
+    }
+
+    .survey-option-delete-btn {
+        justify-self: start;
+    }
+
+    .survey-result-bar-label {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .survey-result-bar-count {
+        white-space: normal;
+    }
+
+    .survey-public-card {
+        padding: 24px 18px;
+    }
+
+    .survey-admin-actions,
+    .survey-edit-header-actions {
+        gap: 8px;
+    }
 }
