@@ -1,0 +1,145 @@
+@page "/admin/surveys"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
+@using RotationDating.Web.Services
+@inject SurveyService Surveys
+@inject NavigationManager Navigation
+
+<PageTitle>설문조사 관리</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="/home" class="back-link">← 메뉴</a>
+        <h1>설문조사</h1>
+        <p class="subtitle">설문을 만들고 참여 링크를 공유하세요</p>
+    </header>
+
+    @if (Created)
+    {
+        <div class="alert-success">새 설문이 생성되었습니다.</div>
+    }
+    @if (Deleted)
+    {
+        <div class="alert-success">설문이 삭제되었습니다.</div>
+    }
+    @if (Completed)
+    {
+        <div class="alert-success">설문이 완료되었습니다. 참여 링크가 만료되었습니다.</div>
+    }
+    @if (Error == "title")
+    {
+        <div class="error-text">설문 제목을 입력해 주세요.</div>
+    }
+
+    <form method="post" action="/admin/surveys/create" class="survey-create-form">
+        <input type="text" name="title" class="input" placeholder="새 설문 제목 (관리용)" maxlength="200" required />
+        <button type="submit" class="btn btn-primary">+ 설문 만들기</button>
+    </form>
+
+    @if (_surveys.Count == 0)
+    {
+        <div class="empty-state">
+            <p>등록된 설문이 없습니다.</p>
+        </div>
+    }
+    else
+    {
+        <div class="survey-admin-list">
+            @foreach (var survey in _surveys)
+            {
+                <div class="survey-admin-card @(!survey.IsActive ? "is-completed" : "")">
+                    <div class="survey-admin-card-head">
+                        <h2>
+                            @survey.Title
+                            @if (!survey.IsActive)
+                            {
+                                <span class="tag tag-completed">완료</span>
+                            }
+                            else
+                            {
+                                <span class="tag tag-active">진행중</span>
+                            }
+                        </h2>
+                        <span class="survey-admin-meta">항목 @(survey.Questions.Count)개 · 응답 @(survey.Responses.Count)건 · @_createdLabel(survey.CreatedAt)</span>
+                    </div>
+
+                    @if (survey.IsActive)
+                    {
+                        <div class="survey-link-box">
+                            <span class="survey-link-label">참여 링크</span>
+                            <code class="survey-link-url">@GetParticipantUrl(survey.Slug)</code>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="survey-link-box survey-link-expired">
+                            <span class="survey-link-label">참여 링크</span>
+                            <p class="survey-link-expired-text">설문이 완료되어 링크가 만료되었습니다.</p>
+                        </div>
+                    }
+
+                    <div class="survey-admin-actions">
+                        <a href="/admin/surveys/edit?id=@survey.Id" class="btn btn-sm btn-primary">편집</a>
+                        <a href="/admin/surveys/results?id=@survey.Id" class="btn btn-sm">결과 보기</a>
+                        <form method="post" action="/admin/surveys/duplicate" class="inline-form">
+                            <input type="hidden" name="id" value="@survey.Id" />
+                            <button type="submit" class="btn btn-sm">설문 복사</button>
+                        </form>
+                        @if (survey.IsActive)
+                        {
+                            <button type="button" class="btn btn-sm" @onclick="() => CopyLink(survey.Slug)">링크 복사</button>
+                            <form method="post" action="/admin/surveys/complete" class="inline-form"
+                                  onsubmit="return confirm('설문을 완료하시겠습니까? 완료 후 참여 링크가 만료됩니다.');">
+                                <input type="hidden" name="id" value="@survey.Id" />
+                                <input type="hidden" name="returnTo" value="list" />
+                                <button type="submit" class="btn btn-sm btn-secondary">설문 완료</button>
+                            </form>
+                        }
+                        <form method="post" action="/admin/surveys/delete" class="inline-form"
+                              onsubmit="return confirm('이 설문을 삭제하시겠습니까?');">
+                            <input type="hidden" name="id" value="@survey.Id" />
+                            <button type="submit" class="btn btn-sm btn-danger">삭제</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public bool Created { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Deleted { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Completed { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private List<Models.Survey> _surveys = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _surveys = await Surveys.GetAllAsync();
+    }
+
+    private string GetParticipantUrl(string slug) =>
+        $"{Navigation.BaseUri}s/{slug}";
+
+    private static string _createdLabel(DateTime createdAt) =>
+        createdAt.ToLocalTime().ToString("yyyy.MM.dd HH:mm");
+
+    private async Task CopyLink(string slug)
+    {
+        var url = GetParticipantUrl(slug);
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+    }
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+}

@@ -13,6 +13,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ParticipantAiMatch> AiMatches => Set<ParticipantAiMatch>();
     public DbSet<EventCandidateDate> EventCandidateDates => Set<EventCandidateDate>();
     public DbSet<ApplicationAvailability> ApplicationAvailabilities => Set<ApplicationAvailability>();
+    public DbSet<Survey> Surveys => Set<Survey>();
+    public DbSet<SurveyQuestion> SurveyQuestions => Set<SurveyQuestion>();
+    public DbSet<SurveyOption> SurveyOptions => Set<SurveyOption>();
+    public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
+    public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -110,6 +115,66 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(v => v.TargetApplicationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Survey>(entity =>
+        {
+            entity.Property(s => s.Title).HasMaxLength(200).IsRequired();
+            entity.Property(s => s.Slug).HasMaxLength(32).IsRequired();
+            entity.Property(s => s.WelcomeTitle).HasMaxLength(200).IsRequired();
+            entity.Property(s => s.WelcomeContent).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(s => s.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<SurveyQuestion>(entity =>
+        {
+            entity.Property(q => q.Title).HasMaxLength(200).IsRequired();
+            entity.Property(q => q.Content).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(q => new { q.SurveyId, q.SortOrder });
+            entity.HasOne(q => q.Survey)
+                .WithMany(s => s.Questions)
+                .HasForeignKey(q => q.SurveyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurveyOption>(entity =>
+        {
+            entity.Property(o => o.Text).HasMaxLength(500).IsRequired();
+            entity.HasIndex(o => new { o.QuestionId, o.SortOrder });
+            entity.HasOne(o => o.Question)
+                .WithMany(q => q.Options)
+                .HasForeignKey(o => o.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurveyResponse>(entity =>
+        {
+            entity.Property(r => r.PhoneNumber).HasMaxLength(30).IsRequired();
+            entity.Property(r => r.NormalizedPhone).HasMaxLength(20).IsRequired();
+            entity.HasIndex(r => r.SurveyId);
+            entity.HasIndex(r => new { r.SurveyId, r.NormalizedPhone }).IsUnique();
+            entity.HasOne(r => r.Survey)
+                .WithMany(s => s.Responses)
+                .HasForeignKey(r => r.SurveyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SurveyAnswer>(entity =>
+        {
+            entity.Property(a => a.TextAnswer).HasMaxLength(4000);
+            entity.HasIndex(a => new { a.ResponseId, a.QuestionId });
+            entity.HasOne(a => a.Response)
+                .WithMany(r => r.Answers)
+                .HasForeignKey(a => a.ResponseId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.Question)
+                .WithMany()
+                .HasForeignKey(a => a.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.Option)
+                .WithMany()
+                .HasForeignKey(a => a.OptionId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

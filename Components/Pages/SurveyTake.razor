@@ -1,0 +1,199 @@
+@page "/s/{Slug}/take"
+@layout Layout.SurveyLayout
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Http
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject SurveyService Surveys
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(_survey?.Title ?? "설문 참여")</PageTitle>
+
+<div class="survey-public-page survey-take-page">
+    @if (_survey is null)
+    {
+        <div class="survey-public-card">
+            <h1>설문을 찾을 수 없습니다</h1>
+            <p>링크가 올바른지 확인해 주세요.</p>
+        </div>
+    }
+    else if (!_survey.IsActive)
+    {
+        <div class="survey-public-card survey-expired-card">
+            <h1>설문이 종료되었습니다</h1>
+            <p>참여 링크가 만료되어 더 이상 응답할 수 없습니다.</p>
+        </div>
+    }
+    else
+    {
+        <div class="survey-take-wrap">
+            <header class="survey-take-header">
+                <a href="/s/@Slug" class="back-link">← 웰컴</a>
+                <h1>@_survey.WelcomeTitle</h1>
+                @if (_survey.Questions.Count > 0)
+                {
+                    <p class="subtitle">총 @(_survey.Questions.Count)개 문항</p>
+                }
+            </header>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="error-text survey-take-error">@_errorMessage</div>
+            }
+
+            <form method="post" action="/s/@Slug/submit" class="survey-take-form">
+                @if (_survey.Questions.Count > 0)
+                {
+                    <div class="survey-take-list">
+                        @foreach (var question in _survey.Questions.OrderBy(q => q.SortOrder))
+                        {
+                            var hasError = Error is "required" or "custom" && QuestionId == question.Id;
+                            <article id="question-@question.Id" class="survey-take-item @(hasError ? "has-error" : "")">
+                                <div class="survey-take-item-head">
+                                    <span class="survey-question-no">@question.SortOrder</span>
+                                    <div>
+                                        <h2>
+                                            @question.Title
+                                            @if (question.IsRequired)
+                                            {
+                                                <span class="required-mark">*</span>
+                                            }
+                                        </h2>
+                                        @if (!string.IsNullOrWhiteSpace(question.Content))
+                                        {
+                                            <p>@question.Content</p>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (question.QuestionType == SurveyQuestionType.Objective)
+                                {
+                                    <div class="survey-take-options">
+                                        @foreach (var option in question.Options.OrderBy(o => o.SortOrder))
+                                        {
+                                            var isSelected = IsOptionSelected(question.Id, option.Id);
+                                            var customSelected = isSelected && option.AllowCustomInput;
+                                            <div class="survey-option-choice-wrap">
+                                                <div class="survey-option-choice">
+                                                    <label class="survey-option-choice-row">
+                                                        <input type="@(question.AllowMultiple ? "checkbox" : "radio")"
+                                                               name="q_@question.Id"
+                                                               value="@option.Id"
+                                                               data-custom="@(option.AllowCustomInput ? "true" : "false")"
+                                                               checked="@isSelected"
+                                                               onchange="toggleSurveyCustomInput(this)" />
+                                                        <span>@option.Text</span>
+                                                    </label>
+                                                    @if (option.AllowCustomInput)
+                                                    {
+                                                        <input type="text"
+                                                               name="q_@(question.Id)_custom_@option.Id"
+                                                               class="input survey-custom-option-input"
+                                                               placeholder="직접 입력해 주세요"
+                                                               maxlength="500"
+                                                               value="@GetCustomText(question.Id, option.Id)"
+                                                               disabled="@(!customSelected)"
+                                                               style="@(customSelected ? null : "display:none")" />
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (question.AllowMultiple)
+                                    {
+                                        <p class="survey-take-hint">복수 선택 가능</p>
+                                    }
+                                }
+                                else
+                                {
+                                    <textarea name="q_@(question.Id)_text"
+                                              class="input textarea"
+                                              rows="4"
+                                              placeholder="답변을 입력해 주세요"
+                                              maxlength="4000">@GetTextAnswer(question.Id)</textarea>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+
+                <section id="survey-consent-section" class="survey-consent-section @(Error is "consent" or "phone" or "duplicate" ? "has-error" : "")">
+                    <h2 class="survey-consent-title">개인정보 수집 및 마케팅(광고성 정보) 수신 동의 <span class="required-mark">*</span></h2>
+                    <p class="survey-consent-desc">
+                        작성해 주신 연락처는 이번 매칭 프로그램의 안내뿐만 아니라, 앞으로 진행될 슬로우블러썸의 새로운 행사 소식, 혜택, 이벤트 등의 유용한 정보를 전달해 드리는 용도로 사용됩니다.
+                    </p>
+
+                    <div class="survey-option-choice survey-consent-choice">
+                        <label class="survey-option-choice-row">
+                            <input type="checkbox" name="marketingConsent" value="true" checked="@(_draft?.MarketingConsent == true)" />
+                            <span>네, 개인정보 수집 및 광고성 정보 수신에 동의합니다. (동의 시 다양한 프로그램 소식을 가장 먼저 받아보실 수 있습니다.)</span>
+                        </label>
+                    </div>
+
+                    <div class="survey-phone-field">
+                        <label class="survey-phone-label" for="phoneNumber">휴대폰 번호 <span class="required-mark">*</span></label>
+                        <input id="phoneNumber"
+                               type="tel"
+                               name="phoneNumber"
+                               class="input"
+                               placeholder="01012345678"
+                               maxlength="11"
+                               inputmode="numeric"
+                               pattern="[0-9]{10,11}"
+                               value="@(_draft?.PhoneNumber ?? "")"
+                               oninput="this.value=this.value.replace(/\D/g,'')"
+                               autocomplete="tel" />
+                        <p class="survey-take-hint">숫자만 입력 (예: 01012345678)</p>
+                    </div>
+                </section>
+
+                <div class="survey-take-footer">
+                    <button type="submit" class="btn btn-primary survey-submit-btn">제출하기</button>
+                </div>
+            </form>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = "";
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? QuestionId { get; set; }
+
+    private Models.Survey? _survey;
+    private SurveySubmitInput? _draft;
+
+    private string? _errorMessage => Error switch
+    {
+        "required" => "필수 항목을 모두 입력해 주세요.",
+        "custom" => "직접 입력 보기를 선택하셨다면 내용을 입력해 주세요.",
+        "consent" => "개인정보 수집 및 광고성 정보 수신에 동의해 주세요.",
+        "phone" => "휴대폰 번호를 01012345678 형식으로 입력해 주세요.",
+        "duplicate" => "이미 참여한 휴대폰 번호입니다. 중복 참여는 불가합니다.",
+        _ => null
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _survey = await Surveys.GetParticipantSurveyAsync(Slug);
+
+        if (!string.IsNullOrEmpty(Error) && HttpContextAccessor.HttpContext is { } httpContext)
+            _draft = SurveyResponseDraftStore.Load(httpContext, Slug);
+    }
+
+    private bool IsOptionSelected(int questionId, int optionId) =>
+        _draft?.SelectedOptions.TryGetValue(questionId, out var selected) == true
+        && selected.Contains(optionId);
+
+    private string GetTextAnswer(int questionId) =>
+        _draft?.TextAnswers.TryGetValue(questionId, out var text) == true ? text : "";
+
+    private string GetCustomText(int questionId, int optionId) =>
+        _draft?.CustomOptionTexts.TryGetValue($"{questionId}_{optionId}", out var text) == true ? text : "";
+}

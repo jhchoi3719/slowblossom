@@ -39,7 +39,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization();
 builder.Services.AddAntiforgery();
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 builder.Services.AddScoped<QuestionCardService>();
+builder.Services.AddScoped<SurveyService>();
 builder.Services.AddHttpClient(nameof(SeatMatchingService));
 builder.Services.AddScoped<SeatMatchingService>();
 
@@ -75,6 +83,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -656,6 +665,213 @@ app.MapPost("/admin/questions/save", async (
 
     return Results.Redirect($"/admin/questions?saved=true&id={id}{venueQuery}");
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/surveys/create", async (
+    [FromForm] string? title,
+    SurveyService surveys) =>
+{
+    if (string.IsNullOrWhiteSpace(title))
+        return Results.Redirect("/admin/surveys?error=title");
+
+    var id = await surveys.CreateAsync(title);
+    return Results.Redirect($"/admin/surveys/edit?id={id}&created=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/surveys/delete", async (
+    [FromForm] int id,
+    SurveyService surveys) =>
+{
+    await surveys.DeleteAsync(id);
+    return Results.Redirect("/admin/surveys?deleted=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/surveys/complete", async (
+    [FromForm] int id,
+    [FromForm] string? returnTo,
+    SurveyService surveys) =>
+{
+    await surveys.CompleteAsync(id);
+    return returnTo == "list"
+        ? Results.Redirect("/admin/surveys?completed=true")
+        : Results.Redirect($"/admin/surveys/edit?id={id}&completed=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/surveys/duplicate", async (
+    [FromForm] int id,
+    SurveyService surveys) =>
+{
+    var newId = await surveys.DuplicateAsync(id);
+    if (newId is null)
+        return Results.Redirect("/admin/surveys");
+
+    return Results.Redirect($"/admin/surveys/edit?id={newId}&copied=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/surveys/save-welcome", async (
+    [FromForm] int id,
+    [FromForm] string? title,
+    [FromForm] string? welcomeTitle,
+    [FromForm] string? welcomeContent,
+    SurveyService surveys) =>
+{
+    if (string.IsNullOrWhiteSpace(welcomeTitle))
+        return Results.Redirect($"/admin/surveys/edit?id={id}&error=title");
+
+    await surveys.SaveWelcomeAsync(
+        id,
+        welcomeTitle,
+        welcomeContent ?? "",
+        title);
+
+    return Results.Redirect($"/admin/surveys/edit?id={id}&welcomeSaved=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/surveys/questions/save", async (HttpContext context, SurveyService surveys) =>
+{
+    var form = await context.Request.ReadFormAsync();
+
+    if (!int.TryParse(form["surveyId"], out var surveyId))
+        return Results.Redirect("/admin/surveys");
+
+    int? questionId = int.TryParse(form["questionId"], out var parsedQuestionId)
+        ? parsedQuestionId
+        : null;
+
+    var title = form["title"].ToString();
+    var content = form["content"].ToString();
+    var questionType = form["questionType"].ToString();
+    var isRequired = form["isRequired"].ToString();
+    var allowMultiple = form["allowMultiple"].ToString();
+
+    if (string.IsNullOrWhiteSpace(title))
+        return Results.Redirect($"/admin/surveys/edit?id={surveyId}&error=title");
+
+    if (!Enum.TryParse<SurveyQuestionType>(questionType, ignoreCase: true, out var parsedType))
+        parsedType = SurveyQuestionType.Objective;
+
+    var optionTexts = form["options"].ToList();
+    var optionFlags = form["optionAllowsCustom"].ToList();
+    var optionList = new List<SurveyOptionInput>();
+    for (var i = 0; i < optionTexts.Count; i++)
+    {
+        var text = optionTexts[i]?.Trim();
+        if (string.IsNullOrEmpty(text))
+            continue;
+
+        var isCustom = i < optionFlags.Count && optionFlags[i] == "true";
+        optionList.Add(new SurveyOptionInput
+        {
+            Text = text,
+            AllowCustomInput = isCustom
+        });
+    }
+
+    try
+    {
+        await surveys.SaveQuestionAsync(
+            surveyId,
+            questionId,
+            title,
+            content,
+            parsedType,
+            allowMultiple == "true",
+            isRequired == "true",
+            optionList);
+    }
+    catch (InvalidOperationException)
+    {
+        var editQuery = questionId.HasValue ? $"&editQuestionId={questionId}" : "&addQuestion=true";
+        return Results.Redirect($"/admin/surveys/edit?id={surveyId}{editQuery}&error=options");
+    }
+
+    return Results.Redirect($"/admin/surveys/edit?id={surveyId}&questionSaved=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/surveys/questions/delete", async (
+    [FromForm] int surveyId,
+    [FromForm] int questionId,
+    SurveyService surveys) =>
+{
+    await surveys.DeleteQuestionAsync(surveyId, questionId);
+    return Results.Redirect($"/admin/surveys/edit?id={surveyId}&questionDeleted=true");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/s/{slug}/submit", async (string slug, HttpContext context, SurveyService surveys) =>
+{
+    var form = await context.Request.ReadFormAsync();
+    var input = new SurveySubmitInput();
+
+    foreach (var key in form.Keys)
+    {
+        if (key.EndsWith("_text", StringComparison.Ordinal) && key.StartsWith("q_", StringComparison.Ordinal))
+        {
+            var qIdStr = key["q_".Length..^"_text".Length];
+            if (int.TryParse(qIdStr, out var qId))
+                input.TextAnswers[qId] = form[key].ToString();
+        }
+        else if (key.Contains("_custom_", StringComparison.Ordinal) && key.StartsWith("q_", StringComparison.Ordinal))
+        {
+            var body = key["q_".Length..];
+            var parts = body.Split("_custom_", 2, StringSplitOptions.None);
+            if (parts.Length == 2
+                && int.TryParse(parts[0], out _)
+                && int.TryParse(parts[1], out _))
+            {
+                input.CustomOptionTexts[$"{parts[0]}_{parts[1]}"] = form[key].ToString();
+            }
+        }
+        else if (key.StartsWith("q_", StringComparison.Ordinal))
+        {
+            var qIdStr = key["q_".Length..];
+            if (int.TryParse(qIdStr, out var qId))
+            {
+                var values = form[key]
+                    .Where(v => !string.IsNullOrWhiteSpace(v) && int.TryParse(v, out _))
+                    .Select(v => int.Parse(v!))
+                    .ToList();
+
+                if (values.Count > 0)
+                    input.SelectedOptions[qId] = values;
+            }
+        }
+    }
+
+    input.MarketingConsent = form["marketingConsent"].ToString() == "true";
+    input.PhoneNumber = form["phoneNumber"].ToString();
+
+    var (success, error) = await surveys.SubmitResponseAsync(slug, input);
+    if (!success)
+    {
+        SurveyResponseDraftStore.Save(context, slug, input);
+
+        if (error == "notfound")
+            return Results.Redirect($"/s/{slug}/take");
+
+        if (error == "consent")
+            return Results.Redirect($"/s/{slug}/take?error=consent");
+
+        if (error == "phone")
+            return Results.Redirect($"/s/{slug}/take?error=phone");
+
+        if (error == "duplicate")
+            return Results.Redirect($"/s/{slug}/take?error=duplicate");
+
+        if (error?.StartsWith("required_", StringComparison.Ordinal) == true)
+        {
+            var qId = error["required_".Length..];
+            return Results.Redirect($"/s/{slug}/take?error=required&questionId={qId}");
+        }
+
+        if (error?.StartsWith("custom_", StringComparison.Ordinal) == true)
+        {
+            var qId = error["custom_".Length..];
+            return Results.Redirect($"/s/{slug}/take?error=custom&questionId={qId}");
+        }
+    }
+
+    SurveyResponseDraftStore.Clear(context, slug);
+    return Results.Redirect($"/s/{slug}/complete");
+}).DisableAntiforgery();
 
 app.MapPost("/vote/save", async (
     HttpContext context,

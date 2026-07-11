@@ -1,0 +1,46 @@
+@page "/s/{Slug}"
+@layout Layout.SurveyLayout
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Services
+@inject SurveyService Surveys
+
+<PageTitle>@(_survey?.WelcomeTitle ?? "설문조사")</PageTitle>
+
+<div class="survey-public-page">
+    @if (_survey is null)
+    {
+        <div class="survey-public-card">
+            <h1>설문을 찾을 수 없습니다</h1>
+            <p>링크가 올바른지 확인해 주세요.</p>
+        </div>
+    }
+    else if (!_survey.IsActive)
+    {
+        <div class="survey-public-card survey-expired-card">
+            <h1>설문이 종료되었습니다</h1>
+            <p>참여 링크가 만료되어 더 이상 응답할 수 없습니다.</p>
+        </div>
+    }
+    else
+    {
+        <div class="survey-public-card survey-welcome-card">
+            <p class="survey-public-brand">slow blossom</p>
+            <h1>@_survey.WelcomeTitle</h1>
+            <div class="survey-welcome-content">@_survey.WelcomeContent</div>
+            <a href="/s/@Slug/take" class="btn btn-primary survey-start-btn">설문 시작</a>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = "";
+
+    private Models.Survey? _survey;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _survey = await Surveys.GetParticipantSurveyAsync(Slug);
+    }
+}

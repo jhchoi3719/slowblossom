@@ -1,0 +1,106 @@
+@using RotationDating.Web.Models
+
+<section class="survey-edit-section survey-question-editor">
+    <h2 class="section-title">@Heading</h2>
+
+    <form method="post" action="/admin/surveys/questions/save" class="survey-question-form">
+        <input type="hidden" name="surveyId" value="@SurveyId" />
+        @if (QuestionId.HasValue)
+        {
+            <input type="hidden" name="questionId" value="@QuestionId" />
+        }
+
+        <label class="field-label">제목</label>
+        <input type="text" name="title" class="input" value="@Title" maxlength="200" required />
+
+        <label class="field-label">내용</label>
+        <textarea name="content" class="input textarea" rows="3" maxlength="2000">@Content</textarea>
+
+        <label class="field-label">유형</label>
+        <select name="questionType" class="input" onchange="toggleSurveyQuestionType(this)">
+            <option value="Objective" selected="@(QuestionType == SurveyQuestionType.Objective)">객관식</option>
+            <option value="Subjective" selected="@(QuestionType == SurveyQuestionType.Subjective)">주관식</option>
+        </select>
+
+        <div class="survey-question-checks">
+            <label class="checkbox-label">
+                <input type="checkbox" name="isRequired" value="true" checked="@IsRequired" />
+                필수 입력
+            </label>
+            <label class="checkbox-label survey-allow-multiple-wrap" id="survey-allow-multiple-wrap"
+                   style="@(QuestionType == SurveyQuestionType.Objective ? null : "display:none")">
+                <input type="checkbox" name="allowMultiple" value="true" checked="@AllowMultiple" />
+                다중 선택 허용
+            </label>
+        </div>
+
+        <div id="survey-objective-options" style="@(QuestionType == SurveyQuestionType.Objective ? null : "display:none")">
+            <label class="field-label">보기</label>
+            <div class="survey-option-inputs" id="survey-option-inputs">
+                @for (var i = 0; i < Options.Count; i++)
+                {
+                    var index = i;
+                    var item = Options[index];
+                    <div class="survey-option-input-row @(item.AllowCustomInput ? "is-custom-option" : "")">
+                        <label class="survey-option-input-label" for="option-@index">
+                            보기@(index + 1)@(item.AllowCustomInput ? " (직접입력)" : "")
+                        </label>
+                        <input id="option-@index"
+                               type="text"
+                               name="options"
+                               class="input"
+                               value="@item.Text"
+                               maxlength="500"
+                               placeholder="@(item.AllowCustomInput ? "직접 입력 보기 제목" : $"보기 {index + 1} 입력")" />
+                        <input type="hidden" name="optionAllowsCustom" value="@(item.AllowCustomInput ? "true" : "false")" />
+                        <button type="button"
+                                class="btn btn-sm btn-danger survey-option-delete-btn"
+                                style="@(Options.Count > 1 ? null : "display:none")"
+                                onclick="removeSurveyOption(this)">삭제</button>
+                    </div>
+                }
+            </div>
+            <div class="survey-option-add-actions">
+                <button type="button" class="btn btn-sm survey-option-add-btn" onclick="addSurveyOption()">+ 보기 추가</button>
+                <button type="button" class="btn btn-sm survey-option-add-btn" onclick="addSurveyCustomOption()">+ 직접 입력 보기 추가</button>
+            </div>
+        </div>
+
+        <div class="survey-admin-actions">
+            <button type="submit" class="btn btn-primary">저장</button>
+            <a href="@CancelHref" class="btn">취소</a>
+        </div>
+    </form>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public int SurveyId { get; set; }
+
+    [Parameter]
+    public int? QuestionId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Heading { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public string Content { get; set; } = "";
+
+    [Parameter]
+    public SurveyQuestionType QuestionType { get; set; }
+
+    [Parameter]
+    public bool IsRequired { get; set; }
+
+    [Parameter]
+    public bool AllowMultiple { get; set; }
+
+    [Parameter, EditorRequired]
+    public List<SurveyFormOption> Options { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public string CancelHref { get; set; } = "";
+}

@@ -1,0 +1,128 @@
+@page "/admin/surveys/results"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject SurveyService Surveys
+
+<PageTitle>설문 결과</PageTitle>
+
+<div class="page">
+    @if (_results is null)
+    {
+        <header class="page-header">
+            <a href="/admin/surveys" class="back-link">← 설문 목록</a>
+            <h1>설문을 찾을 수 없습니다</h1>
+        </header>
+    }
+    else
+    {
+        <header class="page-header">
+            <a href="/admin/surveys" class="back-link">← 설문 목록</a>
+            <h1>설문 결과</h1>
+            <p class="subtitle">@_results.Survey.Title · 응답 @_results.TotalResponses 건</p>
+        </header>
+
+        @if (_results.TotalResponses == 0)
+        {
+            <div class="empty-state">
+                <p>아직 제출된 응답이 없습니다.</p>
+            </div>
+        }
+        else
+        {
+            <section class="survey-results-section">
+                <h2 class="section-title">문항별 결과</h2>
+
+                @foreach (var questionResult in _results.Questions)
+                {
+                    <div class="survey-results-question">
+                        <div class="survey-results-question-head">
+                            <span class="survey-question-no">@questionResult.Question.SortOrder</span>
+                            <div>
+                                <h3>@questionResult.Question.Title</h3>
+                                @if (!string.IsNullOrWhiteSpace(questionResult.Question.Content))
+                                {
+                                    <p>@questionResult.Question.Content</p>
+                                }
+                            </div>
+                        </div>
+
+                        @if (questionResult.Question.QuestionType == SurveyQuestionType.Objective)
+                        {
+                            <div class="survey-results-options">
+                                @foreach (var optionResult in questionResult.OptionResults)
+                                {
+                                    <div class="survey-result-bar-row">
+                                        <div class="survey-result-bar-label">
+                                            <span>@optionResult.Option.Text</span>
+                                            <span class="survey-result-bar-count">@(optionResult.Count)건 (@optionResult.Percentage.ToString("0.#")%)</span>
+                                        </div>
+                                        <div class="survey-result-bar-track">
+                                            <div class="survey-result-bar-fill"
+                                                 style="width: @(Math.Max(optionResult.Percentage, optionResult.Count > 0 ? 4 : 0))%"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="survey-results-text-list">
+                                @foreach (var answer in questionResult.TextAnswers)
+                                {
+                                    <div class="survey-results-text-item">
+                                        <p>@answer.Text</p>
+                                        <span class="survey-results-text-meta">@answer.SubmittedAt.ToLocalTime().ToString("yyyy.MM.dd HH:mm")</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="survey-results-section">
+                <h2 class="section-title">응답 목록</h2>
+                <div class="survey-response-list">
+                    @foreach (var response in _results.Responses)
+                    {
+                        <details class="survey-response-item">
+                            <summary>
+                                응답 #@response.Id
+                                <span>@response.SubmittedAt.ToLocalTime().ToString("yyyy.MM.dd HH:mm")</span>
+                            </summary>
+                            <div class="survey-response-body">
+                                @foreach (var answer in response.Answers)
+                                {
+                                    <div class="survey-response-answer">
+                                        <strong>@answer.QuestionTitle</strong>
+                                        <p>@answer.AnswerText</p>
+                                    </div>
+                                }
+                            </div>
+                        </details>
+                    }
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? Id { get; set; }
+
+    private SurveyResultsView? _results;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is null or <= 0)
+        {
+            _results = null;
+            return;
+        }
+
+        _results = await Surveys.GetResultsAsync(Id.Value);
+    }
+}

@@ -44,6 +44,210 @@
             else
                 scrollToTarget();
         })();
+
+        (function () {
+            var preservePaths = ['/admin/surveys/edit', '/admin/surveys'];
+            var path = location.pathname;
+            if (preservePaths.indexOf(path) === -1) return;
+
+            var storageKey = 'preserveScrollY:' + path;
+
+            function saveScroll() {
+                sessionStorage.setItem(storageKey, String(window.scrollY));
+            }
+
+            function restoreScroll() {
+                var raw = sessionStorage.getItem(storageKey);
+                if (raw === null) return;
+                sessionStorage.removeItem(storageKey);
+                var y = parseInt(raw, 10);
+                if (isNaN(y)) return;
+
+                function apply() {
+                    window.scrollTo(0, y);
+                }
+
+                apply();
+                requestAnimationFrame(apply);
+                setTimeout(apply, 50);
+                setTimeout(apply, 150);
+            }
+
+            document.addEventListener('submit', function (event) {
+                var form = event.target;
+                if (!form || form.tagName !== 'FORM') return;
+                saveScroll();
+            }, true);
+
+            document.addEventListener('click', function (event) {
+                var link = event.target.closest('a[href]');
+                if (!link) return;
+
+                var href = link.getAttribute('href');
+                if (!href || href.charAt(0) === '#') return;
+
+                var target;
+                try {
+                    target = new URL(href, location.origin);
+                } catch (e) {
+                    return;
+                }
+
+                if (target.origin !== location.origin) return;
+                if (preservePaths.indexOf(target.pathname) === -1) return;
+                if (target.pathname !== path) return;
+
+                saveScroll();
+            }, true);
+
+            if (document.readyState === 'loading')
+                document.addEventListener('DOMContentLoaded', restoreScroll);
+            else
+                restoreScroll();
+        })();
+
+        (function () {
+            if (!/\/s\/[^/]+\/take$/.test(location.pathname)) return;
+
+            var params = new URLSearchParams(location.search);
+            var error = params.get('error');
+            var questionId = params.get('questionId');
+            if (!error) return;
+
+            var targetId = null;
+            if ((error === 'required' || error === 'custom') && questionId) {
+                targetId = 'question-' + questionId;
+            } else if (error === 'consent' || error === 'phone' || error === 'duplicate') {
+                targetId = 'survey-consent-section';
+            }
+
+            if (!targetId) return;
+
+            function scrollToValidationTarget() {
+                var el = document.getElementById(targetId);
+                if (!el) return;
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            if (document.readyState === 'loading')
+                document.addEventListener('DOMContentLoaded', scrollToValidationTarget);
+            else
+                scrollToValidationTarget();
+
+            requestAnimationFrame(scrollToValidationTarget);
+            setTimeout(scrollToValidationTarget, 100);
+            setTimeout(scrollToValidationTarget, 300);
+        })();
+    </script>
+    <script>
+        window.addSurveyOption = function () {
+            addSurveyOptionRow(false);
+        };
+
+        window.addSurveyCustomOption = function () {
+            addSurveyOptionRow(true);
+        };
+
+        function addSurveyOptionRow(isCustom) {
+            var container = document.getElementById('survey-option-inputs');
+            if (!container) return;
+
+            var count = container.querySelectorAll('.survey-option-input-row').length + 1;
+            var row = document.createElement('div');
+            row.className = 'survey-option-input-row' + (isCustom ? ' is-custom-option' : '');
+            row.innerHTML =
+                '<label class="survey-option-input-label" for="option-' + (count - 1) + '">보기' + count + (isCustom ? ' (직접입력)' : '') + '</label>' +
+                '<input id="option-' + (count - 1) + '" type="text" name="options" class="input" maxlength="500" value="' + (isCustom ? '직접 입력' : '') + '" placeholder="' + (isCustom ? '직접 입력 보기 제목' : ('보기 ' + count + ' 입력')) + '" />' +
+                '<input type="hidden" name="optionAllowsCustom" value="' + (isCustom ? 'true' : 'false') + '" />' +
+                '<button type="button" class="btn btn-sm btn-danger survey-option-delete-btn" onclick="removeSurveyOption(this)">삭제</button>';
+
+            container.appendChild(row);
+            refreshSurveyOptionRows(container);
+        }
+
+        window.removeSurveyOption = function (button) {
+            var container = document.getElementById('survey-option-inputs');
+            if (!container) return;
+
+            var rows = container.querySelectorAll('.survey-option-input-row');
+            if (rows.length <= 1) return;
+
+            var row = button.closest('.survey-option-input-row');
+            if (row) row.remove();
+            refreshSurveyOptionRows(container);
+        };
+
+        function refreshSurveyOptionRows(container) {
+            var rows = container.querySelectorAll('.survey-option-input-row');
+            rows.forEach(function (row, index) {
+                var label = row.querySelector('.survey-option-input-label');
+                var input = row.querySelector('input[name="options"]');
+                var customFlag = row.querySelector('input[name="optionAllowsCustom"]');
+                var deleteBtn = row.querySelector('.survey-option-delete-btn');
+                var isCustom = customFlag && customFlag.value === 'true';
+                var no = index + 1;
+
+                if (label) {
+                    label.textContent = '보기' + no + (isCustom ? ' (직접입력)' : '');
+                    label.setAttribute('for', 'option-' + index);
+                }
+                if (input) {
+                    input.id = 'option-' + index;
+                    input.placeholder = isCustom ? '직접 입력 보기 제목' : ('보기 ' + no + ' 입력');
+                }
+                if (deleteBtn) {
+                    deleteBtn.style.display = rows.length > 1 ? '' : 'none';
+                }
+            });
+        }
+
+        window.toggleSurveyQuestionType = function (select) {
+            var isObjective = select.value === 'Objective';
+            var optionsBlock = document.getElementById('survey-objective-options');
+            var allowMultipleWrap = document.getElementById('survey-allow-multiple-wrap');
+
+            if (optionsBlock) {
+                optionsBlock.style.display = isObjective ? '' : 'none';
+            }
+            if (allowMultipleWrap) {
+                allowMultipleWrap.style.display = isObjective ? '' : 'none';
+            }
+        };
+
+        window.toggleSurveyCustomInput = function (input) {
+            var wrap = input.closest('.survey-option-choice-wrap');
+            if (!wrap) return;
+
+            var customInput = wrap.querySelector('.survey-custom-option-input');
+            if (!customInput) return;
+
+            var questionOptions = input.closest('.survey-take-options');
+            var isMultiple = input.type === 'checkbox';
+
+            if (isMultiple) {
+                customInput.disabled = !input.checked;
+                customInput.style.display = input.checked ? 'block' : 'none';
+                if (!input.checked) customInput.value = '';
+                return;
+            }
+
+            if (questionOptions) {
+                questionOptions.querySelectorAll('.survey-custom-option-input').forEach(function (field) {
+                    field.disabled = true;
+                    field.style.display = 'none';
+                    field.value = '';
+                });
+                questionOptions.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+                    if (radio !== input) radio.checked = false;
+                });
+            }
+
+            if (input.checked && input.dataset.custom === 'true') {
+                customInput.disabled = false;
+                customInput.style.display = 'block';
+                customInput.focus();
+            }
+        };
     </script>
 </body>
 

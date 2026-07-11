@@ -1,0 +1,344 @@
+@page "/admin/surveys/edit"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject SurveyService Surveys
+@inject NavigationManager Navigation
+
+<PageTitle>설문 편집</PageTitle>
+
+<div class="page">
+    @if (_survey is null)
+    {
+        <header class="page-header">
+            <a href="/admin/surveys" class="back-link">← 설문 목록</a>
+            <h1>설문을 찾을 수 없습니다</h1>
+        </header>
+    }
+    else
+    {
+        <header class="page-header">
+            <a href="/admin/surveys" class="back-link">← 설문 목록</a>
+            <h1>설문 편집</h1>
+            <p class="subtitle">
+                @_survey.Title
+                @if (!_survey.IsActive)
+                {
+                    <span class="tag tag-completed">완료</span>
+                }
+                else
+                {
+                    <span class="tag tag-active">진행중</span>
+                }
+            </p>
+            <div class="survey-edit-header-actions">
+                <a href="/admin/surveys/results?id=@_survey.Id" class="btn btn-sm">결과 보기</a>
+                <form method="post" action="/admin/surveys/duplicate" class="inline-form">
+                    <input type="hidden" name="id" value="@_survey.Id" />
+                    <button type="submit" class="btn btn-sm">설문 복사</button>
+                </form>
+                @if (_survey.IsActive)
+                {
+                    <form method="post" action="/admin/surveys/complete" class="inline-form"
+                          onsubmit="return confirm('설문을 완료하시겠습니까? 완료 후 참여 링크가 만료됩니다.');">
+                        <input type="hidden" name="id" value="@_survey.Id" />
+                        <input type="hidden" name="returnTo" value="edit" />
+                        <button type="submit" class="btn btn-sm btn-secondary">설문 완료</button>
+                    </form>
+                }
+            </div>
+        </header>
+
+        @if (Completed)
+        {
+            <div class="alert-success">설문이 완료되었습니다. 참여 링크가 만료되었습니다.</div>
+        }
+        @if (Copied)
+        {
+            <div class="alert-success">설문이 복사되었습니다. 동일한 내용으로 새 설문이 생성되었습니다.</div>
+        }
+        @if (!_survey.IsActive)
+        {
+            <div class="alert-info">이 설문은 완료되어 참여 링크가 만료되었습니다.</div>
+        }
+
+        @if (WelcomeSaved)
+        {
+            <div class="alert-success">웰컴 페이지가 저장되었습니다.</div>
+        }
+        @if (QuestionSaved)
+        {
+            <div class="alert-success">항목이 저장되었습니다.</div>
+        }
+        @if (QuestionDeleted)
+        {
+            <div class="alert-success">항목이 삭제되었습니다.</div>
+        }
+        @if (Error is not null)
+        {
+            <div class="error-text">@_errorMessage</div>
+        }
+
+        <section class="survey-edit-section">
+            <h2 class="section-title">웰컴 페이지</h2>
+            <p class="section-desc">참여자가 링크로 접속했을 때 처음 보는 화면입니다.</p>
+
+            <form method="post" action="/admin/surveys/save-welcome" class="survey-welcome-form">
+                <input type="hidden" name="id" value="@_survey.Id" />
+
+                <label class="field-label">관리용 제목</label>
+                <input type="text" name="title" class="input" value="@_survey.Title" maxlength="200" required />
+
+                <label class="field-label">웰컴 제목</label>
+                <input type="text" name="welcomeTitle" class="input" value="@_survey.WelcomeTitle" maxlength="200" required />
+
+                <label class="field-label">웰컴 내용</label>
+                <textarea name="welcomeContent" class="input textarea" rows="5" maxlength="4000" required>@_survey.WelcomeContent</textarea>
+
+                <button type="submit" class="btn btn-primary">웰컴 페이지 저장</button>
+            </form>
+
+            <div class="survey-link-box">
+                <span class="survey-link-label">참여 링크</span>
+                @if (_survey.IsActive)
+                {
+                    <code class="survey-link-url">@GetParticipantUrl(_survey.Slug)</code>
+                }
+                else
+                {
+                    <p class="survey-link-expired-text">설문이 완료되어 링크가 만료되었습니다.</p>
+                }
+            </div>
+        </section>
+
+        <section class="survey-edit-section">
+            <div class="section-head-row">
+                <div>
+                    <h2 class="section-title">설문 항목</h2>
+                    <p class="section-desc">항목을 한 개씩 추가하고 수정할 수 있습니다.</p>
+                </div>
+            </div>
+
+            @if (_survey.Questions.Count == 0)
+            {
+                <div class="empty-state compact">
+                    <p>등록된 항목이 없습니다.</p>
+                </div>
+                @if (ShowAddForm)
+                {
+                    <SurveyQuestionEditor SurveyId="@_survey.Id"
+                                          Heading="항목 추가"
+                                          Title="@_formTitle"
+                                          Content="@_formContent"
+                                          QuestionType="@_formQuestionType"
+                                          IsRequired="@_formIsRequired"
+                                          AllowMultiple="@_formAllowMultiple"
+                                          Options="@_formOptions"
+                                          CancelHref="@CancelHref" />
+                }
+                @if (!ShowAddForm)
+                {
+                    <a href="/admin/surveys/edit?id=@_survey.Id&addQuestion=true" class="btn btn-primary btn-sm survey-add-question-btn">+ 항목 추가</a>
+                }
+            }
+            else
+            {
+                <div class="survey-question-list">
+                    @foreach (var question in _survey.Questions.OrderBy(q => q.SortOrder))
+                    {
+                        <div class="survey-question-card" id="question-@question.Id">
+                            <div class="survey-question-card-head">
+                                <span class="survey-question-no">@question.SortOrder</span>
+                                <div>
+                                    <h3>@question.Title</h3>
+                                    <p>@question.Content</p>
+                                </div>
+                            </div>
+                            <div class="survey-question-tags">
+                                <span class="tag">@(question.QuestionType == SurveyQuestionType.Objective ? "객관식" : "주관식")</span>
+                                @if (question.IsRequired)
+                                {
+                                    <span class="tag tag-required">필수</span>
+                                }
+                                @if (question.AllowMultiple)
+                                {
+                                    <span class="tag">다중선택</span>
+                                }
+                            </div>
+                            @if (question.QuestionType == SurveyQuestionType.Objective)
+                            {
+                                <ul class="survey-option-preview">
+                                    @foreach (var option in question.Options.OrderBy(o => o.SortOrder))
+                                    {
+                                        <li>
+                                            @option.Text
+                                            @if (option.AllowCustomInput)
+                                            {
+                                                <span class="tag">직접입력</span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <div class="survey-admin-actions">
+                                <a href="/admin/surveys/edit?id=@_survey.Id&editQuestionId=@question.Id" class="btn btn-sm">수정</a>
+                                <form method="post" action="/admin/surveys/questions/delete" class="inline-form"
+                                      onsubmit="return confirm('이 항목을 삭제하시겠습니까?');">
+                                    <input type="hidden" name="surveyId" value="@_survey.Id" />
+                                    <input type="hidden" name="questionId" value="@question.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger">삭제</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        @if (ShowEditFormFor(question.Id))
+                        {
+                            <SurveyQuestionEditor SurveyId="@_survey.Id"
+                                                  QuestionId="@question.Id"
+                                                  Heading="항목 수정"
+                                                  Title="@_formTitle"
+                                                  Content="@_formContent"
+                                                  QuestionType="@_formQuestionType"
+                                                  IsRequired="@_formIsRequired"
+                                                  AllowMultiple="@_formAllowMultiple"
+                                                  Options="@_formOptions"
+                                                  CancelHref="@CancelHref" />
+                        }
+                    }
+                </div>
+
+                @if (ShowAddForm)
+                {
+                    <SurveyQuestionEditor SurveyId="@_survey.Id"
+                                          Heading="항목 추가"
+                                          Title="@_formTitle"
+                                          Content="@_formContent"
+                                          QuestionType="@_formQuestionType"
+                                          IsRequired="@_formIsRequired"
+                                          AllowMultiple="@_formAllowMultiple"
+                                          Options="@_formOptions"
+                                          CancelHref="@CancelHref" />
+                }
+
+                @if (!ShowAddForm && !ShowEditForm)
+                {
+                    <a href="/admin/surveys/edit?id=@_survey.Id&addQuestion=true" class="btn btn-primary btn-sm survey-add-question-btn">+ 항목 추가</a>
+                }
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? Id { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool WelcomeSaved { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool QuestionSaved { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool QuestionDeleted { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Completed { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Copied { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool AddQuestion { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? EditQuestionId { get; set; }
+
+    private Models.Survey? _survey;
+    private SurveyQuestion? EditingQuestion;
+    private string _formTitle = "";
+    private string _formContent = "";
+    private SurveyQuestionType _formQuestionType = SurveyQuestionType.Objective;
+    private bool _formIsRequired;
+    private bool _formAllowMultiple;
+    private List<SurveyFormOption> _formOptions = [new()];
+
+    private bool ShowAddForm => AddQuestion;
+    private bool ShowEditForm => EditQuestionId.HasValue;
+    private string CancelHref => $"/admin/surveys/edit?id={Id}";
+
+    private bool ShowEditFormFor(int questionId) =>
+        ShowEditForm && EditQuestionId == questionId;
+
+    private string? _errorMessage => Error switch
+    {
+        "title" => "제목을 입력해 주세요.",
+        "options" => "객관식 항목은 보기를 1개 이상 입력해 주세요.",
+        _ => null
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is null or <= 0)
+        {
+            _survey = null;
+            return;
+        }
+
+        _survey = await Surveys.GetByIdAsync(Id.Value);
+        if (_survey is null)
+            return;
+
+        if (EditQuestionId.HasValue)
+        {
+            EditingQuestion = _survey.Questions.FirstOrDefault(q => q.Id == EditQuestionId.Value);
+            if (EditingQuestion is not null)
+                LoadQuestionForm(EditingQuestion);
+        }
+        else if (AddQuestion)
+        {
+            ResetQuestionForm();
+        }
+    }
+
+    private void LoadQuestionForm(SurveyQuestion question)
+    {
+        _formTitle = question.Title;
+        _formContent = question.Content;
+        _formQuestionType = question.QuestionType;
+        _formIsRequired = question.IsRequired;
+        _formAllowMultiple = question.AllowMultiple;
+        _formOptions = question.Options
+            .OrderBy(o => o.SortOrder)
+            .Select(o => new SurveyFormOption
+            {
+                Text = o.Text,
+                AllowCustomInput = o.AllowCustomInput
+            })
+            .ToList();
+        EnsureMinimumOptions();
+    }
+
+    private void ResetQuestionForm()
+    {
+        _formTitle = "";
+        _formContent = "";
+        _formQuestionType = SurveyQuestionType.Objective;
+        _formIsRequired = false;
+        _formAllowMultiple = false;
+        _formOptions = [new()];
+    }
+
+    private void EnsureMinimumOptions()
+    {
+        if (_formOptions.Count == 0)
+            _formOptions.Add(new SurveyFormOption());
+    }
+
+    private string GetParticipantUrl(string slug) =>
+        $"{Navigation.BaseUri}s/{slug}";
+}

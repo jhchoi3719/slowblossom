@@ -107,6 +107,121 @@ public static class DatabaseInitializer
         await MigrateParticipantAiMatchesAsync(db);
         await MigrateEventsAsync(db);
         await MigrateDatePollTablesAsync(db);
+        await MigrateSurveyTablesAsync(db);
+    }
+
+    private static async Task MigrateSurveyTablesAsync(AppDbContext db)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS Surveys (
+                Id INTEGER NOT NULL CONSTRAINT PK_Surveys PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL,
+                Slug TEXT NOT NULL,
+                WelcomeTitle TEXT NOT NULL,
+                WelcomeContent TEXT NOT NULL,
+                IsActive INTEGER NOT NULL DEFAULT 1,
+                CreatedAt TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_Surveys_Slug ON Surveys (Slug);
+
+            CREATE TABLE IF NOT EXISTS SurveyQuestions (
+                Id INTEGER NOT NULL CONSTRAINT PK_SurveyQuestions PRIMARY KEY AUTOINCREMENT,
+                SurveyId INTEGER NOT NULL,
+                Title TEXT NOT NULL,
+                Content TEXT NOT NULL,
+                QuestionType INTEGER NOT NULL DEFAULT 0,
+                AllowMultiple INTEGER NOT NULL DEFAULT 0,
+                IsRequired INTEGER NOT NULL DEFAULT 0,
+                SortOrder INTEGER NOT NULL,
+                CONSTRAINT FK_SurveyQuestions_Surveys_SurveyId
+                    FOREIGN KEY (SurveyId) REFERENCES Surveys (Id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS IX_SurveyQuestions_SurveyId_SortOrder
+                ON SurveyQuestions (SurveyId, SortOrder);
+
+            CREATE TABLE IF NOT EXISTS SurveyOptions (
+                Id INTEGER NOT NULL CONSTRAINT PK_SurveyOptions PRIMARY KEY AUTOINCREMENT,
+                QuestionId INTEGER NOT NULL,
+                Text TEXT NOT NULL,
+                AllowCustomInput INTEGER NOT NULL DEFAULT 0,
+                SortOrder INTEGER NOT NULL,
+                CONSTRAINT FK_SurveyOptions_SurveyQuestions_QuestionId
+                    FOREIGN KEY (QuestionId) REFERENCES SurveyQuestions (Id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS IX_SurveyOptions_QuestionId_SortOrder
+                ON SurveyOptions (QuestionId, SortOrder);
+
+            CREATE TABLE IF NOT EXISTS SurveyResponses (
+                Id INTEGER NOT NULL CONSTRAINT PK_SurveyResponses PRIMARY KEY AUTOINCREMENT,
+                SurveyId INTEGER NOT NULL,
+                PhoneNumber TEXT NOT NULL DEFAULT '',
+                NormalizedPhone TEXT NOT NULL DEFAULT '',
+                MarketingConsent INTEGER NOT NULL DEFAULT 0,
+                SubmittedAt TEXT NOT NULL,
+                CONSTRAINT FK_SurveyResponses_Surveys_SurveyId
+                    FOREIGN KEY (SurveyId) REFERENCES Surveys (Id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS IX_SurveyResponses_SurveyId
+                ON SurveyResponses (SurveyId);
+
+            CREATE TABLE IF NOT EXISTS SurveyAnswers (
+                Id INTEGER NOT NULL CONSTRAINT PK_SurveyAnswers PRIMARY KEY AUTOINCREMENT,
+                ResponseId INTEGER NOT NULL,
+                QuestionId INTEGER NOT NULL,
+                OptionId INTEGER NULL,
+                TextAnswer TEXT NULL,
+                CONSTRAINT FK_SurveyAnswers_SurveyResponses_ResponseId
+                    FOREIGN KEY (ResponseId) REFERENCES SurveyResponses (Id) ON DELETE CASCADE,
+                CONSTRAINT FK_SurveyAnswers_SurveyQuestions_QuestionId
+                    FOREIGN KEY (QuestionId) REFERENCES SurveyQuestions (Id) ON DELETE CASCADE,
+                CONSTRAINT FK_SurveyAnswers_SurveyOptions_OptionId
+                    FOREIGN KEY (OptionId) REFERENCES SurveyOptions (Id) ON DELETE SET NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_SurveyAnswers_ResponseId_QuestionId
+                ON SurveyAnswers (ResponseId, QuestionId);
+            """;
+
+        await db.Database.ExecuteSqlRawAsync(sql);
+        await MigrateSurveyResponseConsentAsync(db);
+        await MigrateSurveyOptionCustomInputAsync(db);
+    }
+
+    private static async Task MigrateSurveyOptionCustomInputAsync(AppDbContext db)
+    {
+        var columns = await GetTableColumnsAsync(db, "SurveyOptions");
+        if (!columns.Contains("AllowCustomInput"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE SurveyOptions ADD COLUMN AllowCustomInput INTEGER NOT NULL DEFAULT 0");
+    }
+
+    private static async Task MigrateSurveyResponseConsentAsync(AppDbContext db)
+    {
+        var columns = await GetTableColumnsAsync(db, "SurveyResponses");
+        if (!columns.Contains("PhoneNumber"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE SurveyResponses ADD COLUMN PhoneNumber TEXT NOT NULL DEFAULT ''");
+        if (!columns.Contains("MarketingConsent"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE SurveyResponses ADD COLUMN MarketingConsent INTEGER NOT NULL DEFAULT 0");
+        if (!columns.Contains("NormalizedPhone"))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE SurveyResponses ADD COLUMN NormalizedPhone TEXT NOT NULL DEFAULT ''");
+            await db.Database.ExecuteSqlRawAsync("""
+                UPDATE SurveyResponses
+                SET NormalizedPhone = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(PhoneNumber, '-', ''), ' ', ''), '.', ''), '(', ''), ')', '')
+                WHERE NormalizedPhone = '';
+                UPDATE SurveyResponses
+                SET PhoneNumber = NormalizedPhone
+                WHERE NormalizedPhone != '' AND PhoneNumber != NormalizedPhone;
+                """);
+        }
+
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_SurveyResponses_SurveyId_NormalizedPhone
+                ON SurveyResponses (SurveyId, NormalizedPhone)
+                WHERE NormalizedPhone != '';
+            """);
     }
 
     private static async Task MigrateEventsAsync(AppDbContext db)
