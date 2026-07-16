@@ -621,6 +621,26 @@ app.MapPost("/applications/set-confirmed", async (
     return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, filterQuery, fragment: $"app-{applicationId}"));
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
+app.MapPost("/applications/set-memo", async (
+    [FromForm] int applicationId,
+    [FromForm] int eventId,
+    [FromForm] string? memo,
+    [FromForm] string? gender,
+    [FromForm] string? confirmedFilter,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications.FindAsync(applicationId);
+    if (application is not null)
+    {
+        application.Memo = TrimOrNull(memo);
+        await db.SaveChangesAsync();
+    }
+
+    var filterQuery = BuildApplicationsListFilterQuery(gender, confirmedFilter);
+    return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, filterQuery, fragment: $"app-{applicationId}"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
 app.MapPost("/events/delete", async (
     [FromForm] int eventId,
     [FromForm] string returnPage,

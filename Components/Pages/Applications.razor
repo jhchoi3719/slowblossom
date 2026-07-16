@@ -210,19 +210,20 @@
         <div class="toolbar toolbar-actions">
             <a class="btn btn-primary" href="@GetPageUrl(_selectedEvent.Id, "addApplication=true")">+ 신청서 추가</a>
             <a class="btn btn-secondary" href="@GetPageUrl(_selectedEvent.Id, "bulkAdd=true")">일괄 추가</a>
-            @if (_bulkSmsTargetCount > 0)
+            @if (_visibleApplications.Any(a => !string.IsNullOrWhiteSpace(a.Phone)))
             {
-                <button type="button"
-                        class="btn btn-secondary"
-                        data-numbers='@System.Text.Json.JsonSerializer.Serialize(_bulkSmsNumbers)'
-                        onclick="openBulkSms(JSON.parse(this.dataset.numbers))">
-                    일괄 메시지 보내기 (@_bulkSmsTargetCount)
-                </button>
+                <label class="sms-select-all-label">
+                    <input type="checkbox" id="sms-select-all" onchange="toggleAllSmsCheckboxes(this)" />
+                    전체 선택
+                </label>
             }
-            else
-            {
-                <button type="button" class="btn btn-secondary" disabled>일괄 메시지 보내기 (0)</button>
-            }
+            <button type="button"
+                    id="bulk-sms-btn"
+                    class="btn btn-secondary"
+                    onclick="openBulkSmsFromCheckboxes()"
+                    disabled>
+                일괄 메시지 보내기 (<span id="sms-selected-count">0</span>)
+            </button>
         </div>
         <div class="toolbar toolbar-actions">
             <a class="btn @GetGenderFilterButtonClass(null)" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(gender: ""))">전체 (@_totalApplicationCount)</a>
@@ -410,7 +411,11 @@
             <div class="participant-list">
                 @foreach (var app in _visibleApplications)
                 {
+                    var hasPhone = !string.IsNullOrWhiteSpace(app.Phone);
+                    var smsPhone = hasPhone ? NormalizePhoneForSms(app.Phone!) : "";
                     <div class="participant-card application-card" id="app-@app.Id">
+                        <div class="application-card-layout">
+                        <div class="application-card-main">
                         <div class="participant-header">
                             <span class="participant-name">@app.Name</span>
                             @if (!string.IsNullOrWhiteSpace(app.Gender))
@@ -528,7 +533,7 @@
                                 {
                                     <span class="confirm-hint">실행일 확정 후 가능</span>
                                 }
-                                else if (_selectedEvent.Kind == EventKind.DatePoll && !EventDateHelper.CanConfirmOnPoll(app))
+                                else if (_selectedEvent.Kind == EventKind.DatePoll && EventDateHelper.ShowsUnavailableOnFinalizedDate(_selectedEvent, app))
                                 {
                                     <span class="confirm-hint">실행일에 불가</span>
                                 }
@@ -543,6 +548,21 @@
                                     </form>
                                 }
                             </div>
+                            <div class="info-row memo-row">
+                                <span class="label">메모</span>
+                                <form method="post" action="/applications/set-memo" class="application-memo-form">
+                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                    <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                                    @ListFilterHiddenFields
+                                    <input type="text"
+                                           name="memo"
+                                           class="input application-memo-input"
+                                           value="@app.Memo"
+                                           placeholder="한 줄 메모"
+                                           maxlength="200" />
+                                    <button type="submit" class="btn btn-sm btn-secondary application-memo-save">저장</button>
+                                </form>
+                            </div>
                         </div>
                         <div class="participant-actions">
                             <a class="btn btn-sm" href="@GetPageUrl(_selectedEvent.Id, $"editId={app.Id}")">수정</a>
@@ -551,6 +571,14 @@
                                 <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
                                 <button type="submit" class="btn btn-sm btn-danger">삭제</button>
                             </form>
+                        </div>
+                        </div>
+                        <label class="application-sms-check" title="@(hasPhone ? "일괄 메시지 대상" : "연락처 없음")">
+                            <input type="checkbox"
+                                   class="sms-select-checkbox"
+                                   data-phone="@smsPhone"
+                                   disabled="@(!hasPhone)" />
+                        </label>
                         </div>
                     </div>
                 }
@@ -608,9 +636,6 @@
     private int _totalApplicationCount;
     private int _confirmedApplicationCount;
     private int _pendingApplicationCount;
-    private List<string> _bulkSmsNumbers = [];
-    private int _bulkSmsTargetCount;
-
     private List<Event> _events = [];
     private Event? _selectedEvent;
     private ApplicationEditModel _editApplication = new();
@@ -684,21 +709,14 @@
                 "pending" => !a.IsConfirmed,
                 _ => true
             })
-            .OrderByDescending(a => a.CreatedAt)
+            .OrderBy(a => _selectedEvent is not null && EventDateHelper.ShowsUnavailableOnFinalizedDate(_selectedEvent, a) ? 1 : 0)
+            .ThenByDescending(a => a.CreatedAt)
             .ToList();
         _totalApplicationCount = _selectedEvent?.Applications.Count ?? 0;
         _maleApplicationCount = _selectedEvent?.Applications.Count(a => a.Gender == "남") ?? 0;
         _femaleApplicationCount = _selectedEvent?.Applications.Count(a => a.Gender == "여") ?? 0;
         _confirmedApplicationCount = _selectedEvent?.Applications.Count(a => a.IsConfirmed) ?? 0;
         _pendingApplicationCount = _selectedEvent?.Applications.Count(a => !a.IsConfirmed) ?? 0;
-        var bulkSmsNumbers = (_selectedEvent?.Applications ?? [])
-            .Where(a => a.AllowContact == false && !string.IsNullOrWhiteSpace(a.Phone))
-            .Select(a => NormalizePhoneForSms(a.Phone!))
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Distinct()
-            .ToList();
-        _bulkSmsNumbers = bulkSmsNumbers;
-        _bulkSmsTargetCount = bulkSmsNumbers.Count;
 
         if (EditId.HasValue)
             await LoadEditFormAsync();

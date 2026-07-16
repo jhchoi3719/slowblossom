@@ -30,6 +30,22 @@ public static class EventDateHelper
         return app.Availabilities.Any(a => a.AvailableDate.Date == finalized.Value);
     }
 
+    public static bool ShowsUnavailableOnFinalizedDate(Event evt, ParticipantApplication app)
+    {
+        if (evt.Kind != EventKind.DatePoll)
+            return false;
+        if (IsPollAwaitingFinalization(evt))
+            return false;
+        if (app.IsConfirmed)
+            return false;
+
+        var finalized = evt.FinalizedDate?.Date;
+        if (finalized is null)
+            return false;
+
+        return !app.Availabilities.Any(a => a.AvailableDate.Date == finalized.Value);
+    }
+
     public static List<DateTime> ParseAvailableDates(string? text, IEnumerable<DateTime>? allowedDates = null)
     {
         if (string.IsNullOrWhiteSpace(text))
