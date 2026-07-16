@@ -17,7 +17,8 @@ public static class DatabaseInitializer
         ["Smoking"] = "ALTER TABLE ParticipantApplications ADD COLUMN Smoking INTEGER NULL",
         ["AllowContact"] = "ALTER TABLE ParticipantApplications ADD COLUMN AllowContact INTEGER NULL",
         ["IsConfirmed"] = "ALTER TABLE ParticipantApplications ADD COLUMN IsConfirmed INTEGER NOT NULL DEFAULT 0",
-        ["Memo"] = "ALTER TABLE ParticipantApplications ADD COLUMN Memo TEXT NULL"
+        ["Memo"] = "ALTER TABLE ParticipantApplications ADD COLUMN Memo TEXT NULL",
+        ["Password"] = "ALTER TABLE ParticipantApplications ADD COLUMN Password TEXT NULL"
     };
 
     public static async Task InitializeAsync(AppDbContext db)

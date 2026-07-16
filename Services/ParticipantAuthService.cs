@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using RotationDating.Web.Data;
 using RotationDating.Web.Models;
@@ -6,6 +10,13 @@ namespace RotationDating.Web.Services;
 
 public static class ParticipantAuthService
 {
+    public const int PasswordLength = 4;
+
+    public static bool IsValidPasswordFormat(string? password) =>
+        password?.Length == PasswordLength && password.All(char.IsDigit);
+
+    public static bool HasPassword(ParticipantApplication application) =>
+        IsValidPasswordFormat(application.Password);
     public static string FormatLoginId(string name, DateTime eventDate)
     {
         var trimmedName = name.Trim();
@@ -79,5 +90,27 @@ public static class ParticipantAuthService
         {
             return false;
         }
+    }
+
+    public static async Task SignInParticipantAsync(HttpContext context, ParticipantApplication application)
+    {
+        var venue = VenueHelper.FromEventKind(application.Event!.Kind);
+        var effectiveDate = EventDateHelper.GetEffectiveLoginDate(application.Event);
+
+        var participantClaims = new[]
+        {
+            new Claim(ClaimTypes.Name, application.Name.Trim()),
+            new Claim(ClaimTypes.Role, AuthRoles.Participant),
+            new Claim(AuthClaims.EventId, application.EventId.ToString()),
+            new Claim(AuthClaims.EventTitle, application.Event.Title),
+            new Claim(AuthClaims.ApplicationId, application.Id.ToString()),
+            new Claim(AuthClaims.Gender, application.Gender ?? ""),
+            new Claim(AuthClaims.VenueLabel, VenueHelper.DisplayName(venue)),
+            new Claim(AuthClaims.EventDateLabel, effectiveDate?.ToString("yyyy년 M월 d일 (ddd)") ?? "")
+        };
+        var participantIdentity = new ClaimsIdentity(participantClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await context.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(participantIdentity));
     }
 }

@@ -290,6 +290,61 @@
                 customInput.focus();
             }
         };
+
+        window.addCandidateDate = function () {
+            var container = document.getElementById('candidate-date-inputs');
+            if (!container) return;
+
+            var count = container.querySelectorAll('.candidate-date-input-row').length;
+            var row = document.createElement('div');
+            row.className = 'candidate-date-input-row';
+            row.innerHTML =
+                '<label class="candidate-date-input-label" for="candidate-date-' + count + '">후보일 ' + (count + 1) + '</label>' +
+                '<input id="candidate-date-' + count + '" type="date" name="candidateDates" class="input" required />' +
+                '<button type="button" class="btn btn-sm btn-danger candidate-date-delete-btn" onclick="removeCandidateDate(this)">삭제</button>';
+
+            container.appendChild(row);
+            refreshCandidateDateRows(container);
+        };
+
+        window.removeCandidateDate = function (button) {
+            var container = document.getElementById('candidate-date-inputs');
+            if (!container) return;
+
+            var rows = container.querySelectorAll('.candidate-date-input-row');
+            if (rows.length <= 1) return;
+
+            var row = button.closest('.candidate-date-input-row');
+            if (row) row.remove();
+            refreshCandidateDateRows(container);
+        };
+
+        function refreshCandidateDateRows(container) {
+            var rows = container.querySelectorAll('.candidate-date-input-row');
+            rows.forEach(function (row, index) {
+                var label = row.querySelector('.candidate-date-input-label');
+                var input = row.querySelector('input[name="candidateDates"]');
+                var deleteBtn = row.querySelector('.candidate-date-delete-btn');
+                var no = index + 1;
+
+                if (label) {
+                    label.textContent = '후보일 ' + no;
+                    label.setAttribute('for', 'candidate-date-' + index);
+                }
+                if (input) {
+                    input.id = 'candidate-date-' + index;
+                    input.required = true;
+                }
+                if (deleteBtn) {
+                    deleteBtn.style.display = rows.length > 1 ? '' : 'none';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var container = document.getElementById('candidate-date-inputs');
+            if (container) refreshCandidateDateRows(container);
+        });
     </script>
 </body>
 

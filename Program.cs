@@ -89,12 +89,13 @@ app.UseAuthorization();
 
 app.MapGet("/ping", () => Results.Text("ok", "text/plain"));
 
-app.MapPost("/login", async ([FromForm] string? username, HttpContext context, IDbContextFactory<AppDbContext> dbFactory) =>
+app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? password, HttpContext context, IDbContextFactory<AppDbContext> dbFactory) =>
 {
     if (string.IsNullOrWhiteSpace(username))
         return InvalidLoginResponse();
 
     var name = username.Trim();
+    var trimmedPassword = string.IsNullOrWhiteSpace(password) ? null : password.Trim();
 
     if (AuthRoles.IsAdmin(name))
     {
@@ -168,25 +169,49 @@ app.MapPost("/login", async ([FromForm] string? username, HttpContext context, I
         return InvalidLoginResponse();
     }
 
-    var venue = VenueHelper.FromEventKind(application.Event.Kind);
-    var effectiveDate = EventDateHelper.GetEffectiveLoginDate(application.Event);
-
-    var participantClaims = new[]
+    if (!ParticipantAuthService.HasPassword(application))
     {
-        new Claim(ClaimTypes.Name, application.Name.Trim()),
-        new Claim(ClaimTypes.Role, AuthRoles.Participant),
-        new Claim(AuthClaims.EventId, application.EventId.ToString()),
-        new Claim(AuthClaims.EventTitle, application.Event.Title),
-        new Claim(AuthClaims.ApplicationId, application.Id.ToString()),
-        new Claim(AuthClaims.Gender, application.Gender ?? ""),
-        new Claim(AuthClaims.VenueLabel, VenueHelper.DisplayName(venue)),
-        new Claim(AuthClaims.EventDateLabel, effectiveDate?.ToString("yyyy년 M월 d일 (ddd)") ?? "")
-    };
-    var participantIdentity = new ClaimsIdentity(participantClaims, CookieAuthenticationDefaults.AuthenticationScheme);
-    await context.SignInAsync(
-        CookieAuthenticationDefaults.AuthenticationScheme,
-        new ClaimsPrincipal(participantIdentity));
+        ParticipantPasswordSetupStore.SetPendingApplicationId(context, application.Id);
+        return Results.Redirect("/set-password");
+    }
 
+    if (!ParticipantAuthService.IsValidPasswordFormat(trimmedPassword)
+        || trimmedPassword != application.Password)
+    {
+        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Results.Redirect(string.IsNullOrEmpty(trimmedPassword) ? "/?error=required" : "/?error=password");
+    }
+
+    await ParticipantAuthService.SignInParticipantAsync(context, application);
+    return Results.Redirect("/welcome");
+}).DisableAntiforgery();
+
+app.MapPost("/set-password", async ([FromForm] string? password, HttpContext context, IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var applicationId = ParticipantPasswordSetupStore.GetPendingApplicationId(context);
+    if (applicationId is null)
+        return Results.Redirect("/set-password?error=session");
+
+    var trimmedPassword = password?.Trim();
+    if (!ParticipantAuthService.IsValidPasswordFormat(trimmedPassword))
+        return Results.Redirect("/set-password?error=format");
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications
+        .Include(a => a.Event)
+        .FirstOrDefaultAsync(a => a.Id == applicationId.Value && a.IsConfirmed);
+
+    if (application?.Event is null)
+    {
+        ParticipantPasswordSetupStore.Clear(context);
+        return Results.Redirect("/set-password?error=session");
+    }
+
+    application.Password = trimmedPassword;
+    await db.SaveChangesAsync();
+
+    ParticipantPasswordSetupStore.Clear(context);
+    await ParticipantAuthService.SignInParticipantAsync(context, application);
     return Results.Redirect("/welcome");
 }).DisableAntiforgery();
 
@@ -331,14 +356,18 @@ app.MapPost("/applications/add-date", async (
 
     if (kind == EventKind.DatePoll)
     {
-        var dates = (candidateDates ?? [])
+        var rawDates = (candidateDates ?? [])
+            .Where(d => d != default)
             .Select(d => d.Date)
-            .Distinct()
-            .OrderBy(d => d)
             .ToList();
 
-        if (dates.Count < 2)
+        if (rawDates.Count == 0)
             return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.SuseongParam, "pollneed"));
+
+        if (rawDates.Count != rawDates.Distinct().Count())
+            return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.SuseongParam, "pollduplicate"));
+
+        var dates = rawDates.Distinct().OrderBy(d => d).ToList();
 
         var eventTitle = string.IsNullOrWhiteSpace(title)
             ? $"{dates[0]:M월} 호텔수성스퀘어 소개팅"

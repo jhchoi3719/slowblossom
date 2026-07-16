@@ -137,6 +137,10 @@
                                 {
                                     <span class="participant-tag login-id-tag">@ParticipantAuthService.FormatLoginId(app.Name, loginDate.Value)</span>
                                 }
+                                @if (ParticipantAuthService.HasPassword(app))
+                                {
+                                    <span class="participant-tag password-tag">PW @app.Password</span>
+                                }
                             </div>
                             <div class="participant-body">
                                 @if (!string.IsNullOrWhiteSpace(app.Phone))

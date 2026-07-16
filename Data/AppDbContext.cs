@@ -72,6 +72,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(a => a.PreferredAgeRange).HasMaxLength(50);
             entity.Property(a => a.Interests).HasMaxLength(500);
             entity.Property(a => a.Memo).HasMaxLength(200);
+            entity.Property(a => a.Password).HasMaxLength(4);
             entity.HasOne(a => a.Event)
                 .WithMany(e => e.Applications)
                 .HasForeignKey(a => a.EventId)
