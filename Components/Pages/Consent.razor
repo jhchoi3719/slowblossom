@@ -1,0 +1,73 @@
+@page "/consent"
+@layout Layout.LoginLayout
+@attribute [Authorize(Roles = "Participant")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject ParticipantConsentService ConsentService
+@inject NavigationManager Navigation
+
+<PageTitle>@_title</PageTitle>
+
+<div class="login-page">
+<div class="consent-page">
+    <div class="consent-card">
+        <div class="consent-brand">
+            <img src="logo.png" alt="slow blossom" class="login-logo-img" />
+        </div>
+
+        <div class="consent-content">
+            <h1 class="consent-title">@_title</h1>
+            <div class="consent-body">@_content</div>
+
+            <form method="post" action="/consent/accept" class="consent-form">
+                <AntiforgeryToken />
+                <p class="consent-note">동의하지 않으시면 행사 참여가 어렵습니다.</p>
+                <button type="submit" class="btn btn-primary consent-btn">위 내용에 동의하고 참여합니다</button>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string _title = ParticipantConsentService.DefaultTitle;
+    private string _content = ParticipantConsentService.DefaultContent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+
+        var session = ParticipantSession.FromClaims((await AuthState).User);
+        if (session is null || session.ApplicationId <= 0)
+        {
+            Navigation.NavigateTo("/welcome", replace: true);
+            return;
+        }
+
+        var venue = ParticipantConsentService.VenueFromSession(session);
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var application = await db.Applications.FindAsync(session.ApplicationId);
+
+        if (application is null)
+        {
+            Navigation.NavigateTo("/welcome", replace: true);
+            return;
+        }
+
+        if (!await ConsentService.NeedsConsentAsync(db, application, venue))
+        {
+            Navigation.NavigateTo("/welcome", replace: true);
+            return;
+        }
+
+        var setting = await ConsentService.GetSettingAsync(db, venue);
+        _title = setting.Title;
+        _content = setting.Content;
+    }
+}

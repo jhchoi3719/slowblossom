@@ -18,6 +18,7 @@ public class ParticipantApplication
     public bool IsConfirmed { get; set; }
     public bool HasArrived { get; set; }
     public string? Password { get; set; }
+    public DateTime? ConsentAcceptedAt { get; set; }
     public string? Memo { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 

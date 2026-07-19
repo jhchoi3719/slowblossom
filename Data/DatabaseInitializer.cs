@@ -19,7 +19,8 @@ public static class DatabaseInitializer
         ["IsConfirmed"] = "ALTER TABLE ParticipantApplications ADD COLUMN IsConfirmed INTEGER NOT NULL DEFAULT 0",
         ["Memo"] = "ALTER TABLE ParticipantApplications ADD COLUMN Memo TEXT NULL",
         ["Password"] = "ALTER TABLE ParticipantApplications ADD COLUMN Password TEXT NULL",
-        ["HasArrived"] = "ALTER TABLE ParticipantApplications ADD COLUMN HasArrived INTEGER NOT NULL DEFAULT 0"
+        ["HasArrived"] = "ALTER TABLE ParticipantApplications ADD COLUMN HasArrived INTEGER NOT NULL DEFAULT 0",
+        ["ConsentAcceptedAt"] = "ALTER TABLE ParticipantApplications ADD COLUMN ConsentAcceptedAt TEXT NULL"
     };
 
     public static async Task InitializeAsync(AppDbContext db)
@@ -112,6 +113,25 @@ public static class DatabaseInitializer
         await MigrateEventsAsync(db);
         await MigrateDatePollTablesAsync(db);
         await MigrateSurveyTablesAsync(db);
+        await MigrateConsentSettingsAsync(db);
+    }
+
+    private static async Task MigrateConsentSettingsAsync(AppDbContext db)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS VenueConsentSettings (
+                Id INTEGER NOT NULL CONSTRAINT PK_VenueConsentSettings PRIMARY KEY AUTOINCREMENT,
+                VenueKey TEXT NOT NULL,
+                IsEnabled INTEGER NOT NULL DEFAULT 0,
+                Title TEXT NOT NULL,
+                Content TEXT NOT NULL,
+                UpdatedAt TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_VenueConsentSettings_VenueKey
+                ON VenueConsentSettings (VenueKey);
+            """;
+
+        await db.Database.ExecuteSqlRawAsync(sql);
     }
 
     private static async Task MigrateSurveyTablesAsync(AppDbContext db)

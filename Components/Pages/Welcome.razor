@@ -6,6 +6,8 @@
 @using RotationDating.Web.Data
 @using RotationDating.Web.Services
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject ParticipantConsentService ConsentService
+@inject NavigationManager Navigation
 
 <PageTitle>환영합니다</PageTitle>
 
@@ -75,6 +77,9 @@
         if (AuthState is null) return;
 
         var user = (await AuthState).User;
+        var session = ParticipantSession.FromClaims(user);
+        await ConsentService.RedirectIfConsentRequiredAsync(session, Navigation, DbFactory);
+
         _participantName = user.Identity?.Name ?? "";
 
         if (!int.TryParse(user.FindFirst(AuthClaims.EventId)?.Value, out var eventId))

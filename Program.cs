@@ -50,6 +50,7 @@ builder.Services.AddScoped<QuestionCardService>();
 builder.Services.AddScoped<SurveyService>();
 builder.Services.AddHttpClient(nameof(SeatMatchingService));
 builder.Services.AddScoped<SeatMatchingService>();
+builder.Services.AddScoped<ParticipantConsentService>();
 
 var dataDir = Environment.GetEnvironmentVariable("DATA_DIR");
 if (string.IsNullOrWhiteSpace(dataDir))
@@ -74,6 +75,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();
     await DatabaseInitializer.InitializeAsync(db);
+    await scope.ServiceProvider.GetRequiredService<ParticipantConsentService>().EnsureSeededAsync(db);
 }
 
 if (!app.Environment.IsDevelopment())
@@ -89,7 +91,7 @@ app.UseAuthorization();
 
 app.MapGet("/ping", () => Results.Text("ok", "text/plain"));
 
-app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? password, HttpContext context, IDbContextFactory<AppDbContext> dbFactory) =>
+app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? password, HttpContext context, IDbContextFactory<AppDbContext> dbFactory, ParticipantConsentService consentService) =>
 {
     if (string.IsNullOrWhiteSpace(username))
         return InvalidLoginResponse();
@@ -183,10 +185,10 @@ app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? pas
     }
 
     await ParticipantAuthService.SignInParticipantAsync(context, application);
-    return Results.Redirect("/welcome");
+    return await RedirectParticipantAfterSignInAsync(context, application, consentService, dbFactory);
 }).DisableAntiforgery();
 
-app.MapPost("/set-password", async ([FromForm] string? password, HttpContext context, IDbContextFactory<AppDbContext> dbFactory) =>
+app.MapPost("/set-password", async ([FromForm] string? password, HttpContext context, IDbContextFactory<AppDbContext> dbFactory, ParticipantConsentService consentService) =>
 {
     var applicationId = ParticipantPasswordSetupStore.GetPendingApplicationId(context);
     if (applicationId is null)
@@ -212,8 +214,44 @@ app.MapPost("/set-password", async ([FromForm] string? password, HttpContext con
 
     ParticipantPasswordSetupStore.Clear(context);
     await ParticipantAuthService.SignInParticipantAsync(context, application);
-    return Results.Redirect("/welcome");
+    return await RedirectParticipantAfterSignInAsync(context, application, consentService, dbFactory);
 }).DisableAntiforgery();
+
+app.MapPost("/consent/accept", async (HttpContext context, IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var session = ParticipantSession.FromClaims(context.User);
+    if (session is null || session.ApplicationId <= 0)
+        return Results.Redirect("/");
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications.FindAsync(session.ApplicationId);
+    if (application is null)
+        return Results.Redirect("/");
+
+    application.ConsentAcceptedAt = DateTime.Now;
+    await db.SaveChangesAsync();
+    return Results.Redirect("/welcome");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Participant)).DisableAntiforgery();
+
+app.MapPost("/admin/consent/save", async (
+    [FromForm] string? venue,
+    [FromForm] string? isEnabled,
+    [FromForm] string? title,
+    [FromForm] string? content,
+    IDbContextFactory<AppDbContext> dbFactory,
+    ParticipantConsentService consentService) =>
+{
+    var parsedVenue = VenueHelper.TryParse(venue) ?? EventVenue.UnoCoffee;
+    await using var db = await dbFactory.CreateDbContextAsync();
+    await consentService.SaveSettingAsync(
+        db,
+        parsedVenue,
+        isEnabled == "true",
+        title ?? "",
+        content ?? "");
+
+    return Results.Redirect(VenueHelper.AdminPageUrl("/admin/consent", parsedVenue, extraQuery: "saved=true"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapGet("/force-logout", async (HttpContext context) =>
 {
@@ -1193,6 +1231,23 @@ static async Task ReplaceAvailabilitiesAsync(
             AvailableDate = date
         });
     }
+}
+
+static async Task<IResult> RedirectParticipantAfterSignInAsync(
+    HttpContext context,
+    ParticipantApplication application,
+    ParticipantConsentService consentService,
+    IDbContextFactory<AppDbContext> dbFactory)
+{
+    if (application.Id <= 0 || application.Event is null)
+        return Results.Redirect("/welcome");
+
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var venue = VenueHelper.FromEventKind(application.Event.Kind);
+    if (await consentService.NeedsConsentAsync(db, application, venue))
+        return Results.Redirect("/consent");
+
+    return Results.Redirect("/welcome");
 }
 
 static IResult InvalidLoginResponse() => Results.Content(

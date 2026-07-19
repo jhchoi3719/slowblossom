@@ -1,0 +1,93 @@
+@page "/admin/consent"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject ParticipantConsentService ConsentService
+
+<PageTitle>참가자 동의 설정</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="@_homeUrl" class="back-link">← 메뉴</a>
+        <h1>참가자 동의 설정</h1>
+        <p class="subtitle">@_pageSubtitle</p>
+    </header>
+
+    @if (_venue is null)
+    {
+        <div class="empty-state">
+            <p>장소를 먼저 선택해 주세요.</p>
+            <a class="btn btn-primary" href="/home">장소 선택으로 이동</a>
+        </div>
+    }
+    else
+    {
+        @if (Saved)
+        {
+            <div class="alert-success">설정이 저장되었습니다.</div>
+        }
+
+        <div class="card form-card">
+            <form method="post" action="/admin/consent/save">
+                <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
+
+                <label class="consent-toggle-label">
+                    <input type="checkbox" name="isEnabled" value="true" checked="@_isEnabled" />
+                    <span>참가자 동의 화면 사용</span>
+                </label>
+                <p class="form-help">켜면 로그인·패스워드 설정 후 동의 화면이 표시됩니다.</p>
+
+                <label class="full-width">
+                    제목
+                    <input type="text" name="title" class="input" value="@_title" maxlength="200" />
+                </label>
+
+                <label class="full-width">
+                    내용
+                    <textarea name="content" class="input consent-textarea" rows="18">@_content</textarea>
+                </label>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">저장</button>
+                    <a class="btn btn-secondary" href="@_homeUrl">취소</a>
+                </div>
+            </form>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "venue")]
+    public string? Venue { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Saved { get; set; }
+
+    private EventVenue? _venue;
+    private string _homeUrl = "/home";
+    private string _pageSubtitle = "";
+    private bool _isEnabled;
+    private string _title = ParticipantConsentService.DefaultTitle;
+    private string _content = ParticipantConsentService.DefaultContent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _venue = VenueHelper.TryParse(Venue);
+        _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
+        _pageSubtitle = _venue.HasValue
+            ? $"{VenueHelper.DisplayName(_venue.Value)} · 참가자 로그인 후 표시되는 동의 문구"
+            : "장소를 선택한 뒤 동의 화면을 설정합니다";
+
+        if (!_venue.HasValue) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var setting = await ConsentService.GetSettingAsync(db, _venue.Value);
+        _isEnabled = setting.IsEnabled;
+        _title = setting.Title;
+        _content = setting.Content;
+    }
+}

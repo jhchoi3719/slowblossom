@@ -9,6 +9,7 @@
 @using RotationDating.Web.Services
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject NavigationManager Navigation
+@inject ParticipantConsentService ConsentService
 
 <PageTitle>@_pageTitle</PageTitle>
 
@@ -166,6 +167,7 @@
         if (AuthState is null) return;
 
         _session = ParticipantSession.FromClaims((await AuthState).User);
+        await ConsentService.RedirectIfConsentRequiredAsync(_session, Navigation, DbFactory);
         if (_session is null || string.IsNullOrEmpty(_session.OppositeGender))
             return;
 

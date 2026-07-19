@@ -2,6 +2,12 @@
 @layout Layout.ParticipantLayout
 @attribute [Authorize(Roles = "Participant")]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Data
+@using RotationDating.Web.Services
+@inject ParticipantConsentService ConsentService
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
 
 <PageTitle>질문카드</PageTitle>
 
@@ -17,4 +23,14 @@
 @code {
     [SupplyParameterFromQuery]
     public int? N { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null) return;
+        var session = ParticipantSession.FromClaims((await AuthState).User);
+        await ConsentService.RedirectIfConsentRequiredAsync(session, Navigation, DbFactory);
+    }
 }

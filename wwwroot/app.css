@@ -163,6 +163,82 @@ html:has(.login-shell) body {
     margin: 12px 0 0;
 }
 
+.consent-page {
+    width: 100%;
+    max-width: 520px;
+}
+
+.consent-card {
+    width: 100%;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f0f0f0;
+    overflow: hidden;
+}
+
+.consent-brand {
+    padding: 24px 20px 8px;
+    text-align: center;
+}
+
+.consent-content {
+    padding: 0 24px 24px;
+}
+
+.consent-title {
+    margin: 0 0 16px;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.consent-body {
+    white-space: pre-wrap;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 16px;
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.consent-note {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.consent-form {
+    margin: 0;
+}
+
+.consent-btn {
+    width: 100%;
+    min-height: 48px;
+}
+
+.consent-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.consent-textarea {
+    min-height: 320px;
+    resize: vertical;
+    line-height: 1.6;
+    text-align: left;
+}
+
 .participant-shell .main-content {
     padding-bottom: 72px;
 }

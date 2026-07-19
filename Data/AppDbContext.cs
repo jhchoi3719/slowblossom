@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SurveyOption> SurveyOptions => Set<SurveyOption>();
     public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
     public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
+    public DbSet<VenueConsentSetting> ConsentSettings => Set<VenueConsentSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -177,6 +178,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(a => a.OptionId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<VenueConsentSetting>(entity =>
+        {
+            entity.ToTable("VenueConsentSettings");
+            entity.Property(s => s.VenueKey).HasMaxLength(20).IsRequired();
+            entity.Property(s => s.Title).HasMaxLength(200).IsRequired();
+            entity.Property(s => s.Content).HasMaxLength(8000).IsRequired();
+            entity.HasIndex(s => s.VenueKey).IsUnique();
         });
     }
 }
