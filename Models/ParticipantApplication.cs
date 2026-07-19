@@ -16,6 +16,7 @@ public class ParticipantApplication
     public bool? Smoking { get; set; }
     public bool? AllowContact { get; set; }
     public bool IsConfirmed { get; set; }
+    public bool HasArrived { get; set; }
     public string? Password { get; set; }
     public string? Memo { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;

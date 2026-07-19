@@ -92,6 +92,7 @@
                 <span class="summary-item male">남 @(_maleCount)명</span>
                 <span class="summary-item female">여 @(_femaleCount)명</span>
                 <span class="summary-item total">총 @(_confirmedApplications.Count)명</span>
+                <span class="summary-item arrived">도착 @(_arrivedCount)명</span>
                 @if (_selectedEvent.Kind == EventKind.DatePoll)
                 {
                     <span class="summary-item poll">가능일 설문</span>
@@ -130,6 +131,10 @@
                                     <span class="participant-tag">@app.BirthDate</span>
                                 }
                                 <span class="confirm-badge">확정</span>
+                                @if (app.HasArrived)
+                                {
+                                    <span class="confirm-badge arrived-badge">도착</span>
+                                }
                                 @{
                                     var loginDate = EventDateHelper.GetEffectiveLoginDate(_selectedEvent);
                                 }
@@ -187,6 +192,29 @@
                                     <span class="value ox-value">@ParticipantApplication.OxLabel(app.Smoking)</span>
                                 </div>
                             </div>
+                            <div class="participant-actions">
+                                <form method="post" action="/participants/toggle-arrival" class="inline-form">
+                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                    <input type="hidden" name="eventId" value="@_selectedEvent!.Id" />
+                                    <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue!.Value)" />
+                                    <button type="submit"
+                                            class="btn btn-sm @(app.HasArrived ? "btn-success" : "btn-secondary")">
+                                        @(app.HasArrived ? "도착 ✓" : "도착 확인")
+                                    </button>
+                                </form>
+                                @if (ParticipantAuthService.HasPassword(app))
+                                {
+                                    <form method="post"
+                                          action="/participants/reset-password"
+                                          class="inline-form"
+                                          onsubmit="return confirm('@app.Name 님의 패스워드를 초기화할까요?');">
+                                        <input type="hidden" name="applicationId" value="@app.Id" />
+                                        <input type="hidden" name="eventId" value="@_selectedEvent!.Id" />
+                                        <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue!.Value)" />
+                                        <button type="submit" class="btn btn-sm btn-danger">PW 초기화</button>
+                                    </form>
+                                }
+                            </div>
                         </div>
                     }
                 </div>
@@ -224,6 +252,7 @@
 
     private int _maleCount => _confirmedApplications.Count(a => a.Gender == "남");
     private int _femaleCount => _confirmedApplications.Count(a => a.Gender == "여");
+    private int _arrivedCount => _confirmedApplications.Count(a => a.HasArrived);
 
     protected override async Task OnParametersSetAsync()
     {

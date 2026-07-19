@@ -61,6 +61,128 @@ public class SeatMatchingService(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<ParticipantAiMatch>> GetFinalCoupleMatchingAsync(
+        int eventId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+
+        return await db.AiMatches
+            .Include(m => m.Male)
+            .Include(m => m.Female)
+            .Where(m => m.EventId == eventId && m.VoteType == VoteType.Final)
+            .OrderBy(m => m.MatchSource)
+            .ThenBy(m => m.Male!.Name)
+            .ThenBy(m => m.Female!.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(List<ParticipantAiMatch> Matches, string? Error)> GenerateFinalCoupleMatchingAsync(
+        int eventId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var applications = await db.Applications
+            .Where(a => a.EventId == eventId && a.IsConfirmed && (a.Gender == "남" || a.Gender == "여"))
+            .ToListAsync(cancellationToken);
+
+        var males = applications.Where(a => a.Gender == "남").ToDictionary(a => a.Id);
+        var females = applications.Where(a => a.Gender == "여").ToDictionary(a => a.Id);
+
+        if (males.Count == 0 || females.Count == 0)
+            return ([], "확정된 남녀 참가자가 모두 있어야 최종 커플 매칭이 가능합니다.");
+
+        var votes = await db.Votes
+            .Where(v => v.EventId == eventId && v.VoteType == VoteType.Final)
+            .ToListAsync(cancellationToken);
+
+        var firstChoices = votes
+            .Where(v => v.Priority == 1)
+            .ToDictionary(v => v.VoterApplicationId, v => v.TargetApplicationId);
+
+        var secondChoices = votes
+            .Where(v => v.Priority == 2)
+            .ToDictionary(v => v.VoterApplicationId, v => v.TargetApplicationId);
+
+        var matched = new HashSet<int>();
+        var matches = new List<ParticipantAiMatch>();
+
+        bool TryAddCouple(int idA, int idB, MatchSource source, string reason)
+        {
+            if (matched.Contains(idA) || matched.Contains(idB))
+                return false;
+
+            if (!TryResolvePair(idA, idB, males, females, out var maleId, out var femaleId))
+                return false;
+
+            males.Remove(maleId);
+            females.Remove(femaleId);
+            matched.Add(maleId);
+            matched.Add(femaleId);
+
+            matches.Add(new ParticipantAiMatch
+            {
+                EventId = eventId,
+                VoteType = VoteType.Final,
+                MaleApplicationId = maleId,
+                FemaleApplicationId = femaleId,
+                MatchSource = source,
+                Reason = reason
+            });
+            return true;
+        }
+
+        foreach (var (voterId, targetId) in firstChoices.OrderBy(p => p.Key))
+        {
+            if (!firstChoices.TryGetValue(targetId, out var reciprocal) || reciprocal != voterId)
+                continue;
+
+            TryAddCouple(voterId, targetId, MatchSource.MutualFirst, "1순위 상호 선택");
+        }
+
+        foreach (var (voterId, targetId) in firstChoices.OrderBy(p => p.Key))
+        {
+            if (secondChoices.TryGetValue(targetId, out var reciprocal) && reciprocal == voterId)
+                TryAddCouple(voterId, targetId, MatchSource.FirstSecondCross, "1순위 ↔ 2순위");
+        }
+
+        foreach (var (voterId, targetId) in secondChoices.OrderBy(p => p.Key))
+        {
+            if (firstChoices.TryGetValue(targetId, out var reciprocal) && reciprocal == voterId)
+                TryAddCouple(voterId, targetId, MatchSource.FirstSecondCross, "1순위 ↔ 2순위");
+        }
+
+        foreach (var (voterId, targetId) in secondChoices.OrderBy(p => p.Key))
+        {
+            if (!secondChoices.TryGetValue(targetId, out var reciprocal) || reciprocal != voterId)
+                continue;
+
+            TryAddCouple(voterId, targetId, MatchSource.MutualSecond, "2순위 상호 선택");
+        }
+
+        var existing = await db.AiMatches
+            .Where(m => m.EventId == eventId && m.VoteType == VoteType.Final)
+            .ToListAsync(cancellationToken);
+        db.AiMatches.RemoveRange(existing);
+        db.AiMatches.AddRange(matches);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return (matches, null);
+    }
+
+    public static string MatchSourceLabel(MatchSource source) => source switch
+    {
+        MatchSource.MutualFirst => "1순위 상호",
+        MatchSource.FirstSecondCross => "1순위 ↔ 2순위",
+        MatchSource.MutualSecond => "2순위 상호",
+        MatchSource.Mutual => "상호 선택",
+        MatchSource.MaleVote => "남성 선택",
+        MatchSource.FemaleVote => "여성 선택",
+        MatchSource.ProfileAi => "AI 매칭",
+        _ => source.ToString()
+    };
+
     private async Task<(List<ParticipantAiMatch> Matches, List<string> UnmatchedNames, string? Error)> GenerateSeatingAsync(
         int eventId,
         VoteType seatType,
@@ -88,7 +210,9 @@ public class SeatMatchingService(
                 .ToListAsync(cancellationToken)
             : [];
 
-        var voteByVoter = votes.ToDictionary(v => v.VoterApplicationId, v => v.TargetApplicationId);
+        var voteByVoter = votes
+            .GroupBy(v => v.VoterApplicationId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(v => v.Priority).First().TargetApplicationId);
         var nameById = applications.ToDictionary(a => a.Id, a => a.Name);
 
         var availableMales = males.ToDictionary(m => m.Id);

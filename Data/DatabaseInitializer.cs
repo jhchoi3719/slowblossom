@@ -18,7 +18,8 @@ public static class DatabaseInitializer
         ["AllowContact"] = "ALTER TABLE ParticipantApplications ADD COLUMN AllowContact INTEGER NULL",
         ["IsConfirmed"] = "ALTER TABLE ParticipantApplications ADD COLUMN IsConfirmed INTEGER NOT NULL DEFAULT 0",
         ["Memo"] = "ALTER TABLE ParticipantApplications ADD COLUMN Memo TEXT NULL",
-        ["Password"] = "ALTER TABLE ParticipantApplications ADD COLUMN Password TEXT NULL"
+        ["Password"] = "ALTER TABLE ParticipantApplications ADD COLUMN Password TEXT NULL",
+        ["HasArrived"] = "ALTER TABLE ParticipantApplications ADD COLUMN HasArrived INTEGER NOT NULL DEFAULT 0"
     };
 
     public static async Task InitializeAsync(AppDbContext db)
@@ -72,6 +73,7 @@ public static class DatabaseInitializer
             """;
 
         await db.Database.ExecuteSqlRawAsync(votesSql);
+        await MigrateParticipantVotesAsync(db);
 
         const string questionsSql = """
             CREATE TABLE IF NOT EXISTS QuestionCards (
@@ -299,6 +301,20 @@ public static class DatabaseInitializer
             if (!existingColumns.Contains(columnName))
                 await db.Database.ExecuteSqlRawAsync(sql);
         }
+    }
+
+    private static async Task MigrateParticipantVotesAsync(AppDbContext db)
+    {
+        var columns = await GetTableColumnsAsync(db, "ParticipantVotes");
+        if (!columns.Contains("Priority"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ParticipantVotes ADD COLUMN Priority INTEGER NOT NULL DEFAULT 1");
+
+        await db.Database.ExecuteSqlRawAsync("DROP INDEX IF EXISTS IX_ParticipantVotes_Voter_Target_Type");
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_ParticipantVotes_Voter_Type_Priority
+                ON ParticipantVotes (VoterApplicationId, VoteType, Priority);
+            """);
     }
 
     private static async Task<HashSet<string>> GetTableColumnsAsync(AppDbContext db, string tableName)

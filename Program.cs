@@ -245,6 +245,42 @@ app.MapPost("/participants/delete", async ([FromForm] int participantId, [FromFo
     return Results.Redirect(VenueHelper.AdminPageUrl("/participants", VenueHelper.FromEventKind(kind), eventId));
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
+app.MapPost("/participants/reset-password", async (
+    [FromForm] int applicationId,
+    [FromForm] int eventId,
+    [FromForm] string? venue,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications.FindAsync(applicationId);
+    if (application is not null)
+    {
+        application.Password = null;
+        await db.SaveChangesAsync();
+    }
+
+    var parsedVenue = VenueHelper.TryParse(venue) ?? EventVenue.UnoCoffee;
+    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", parsedVenue, eventId));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/participants/toggle-arrival", async (
+    [FromForm] int applicationId,
+    [FromForm] int eventId,
+    [FromForm] string? venue,
+    IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var application = await db.Applications.FindAsync(applicationId);
+    if (application is not null)
+    {
+        application.HasArrived = !application.HasArrived;
+        await db.SaveChangesAsync();
+    }
+
+    var parsedVenue = VenueHelper.TryParse(venue) ?? EventVenue.UnoCoffee;
+    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", parsedVenue, eventId));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
 app.MapPost("/participants/add-date", async (
     [FromForm] DateTime eventDate,
     [FromForm] string? title,
@@ -926,6 +962,8 @@ app.MapPost("/vote/save", async (
     HttpContext context,
     [FromForm] string voteType,
     [FromForm] int? targetId,
+    [FromForm] int? targetId1,
+    [FromForm] int? targetId2,
     IDbContextFactory<AppDbContext> dbFactory) =>
 {
     var session = ParticipantSession.FromClaims(context.User);
@@ -945,18 +983,21 @@ app.MapPost("/vote/save", async (
         return Results.Redirect("/");
 
     var oppositeGender = session.OppositeGender;
-    int? selectedId = null;
+    if (string.IsNullOrEmpty(oppositeGender))
+        return Results.Redirect("/welcome");
 
-    if (targetId is > 0 && targetId != session.ApplicationId && !string.IsNullOrEmpty(oppositeGender))
+    async Task<int?> ResolveTargetAsync(int? candidateId)
     {
+        if (candidateId is not > 0 || candidateId == session.ApplicationId)
+            return null;
+
         var isValidTarget = await db.Applications.AnyAsync(a =>
-            a.Id == targetId
+            a.Id == candidateId
             && a.EventId == session.EventId
             && a.IsConfirmed
             && a.Gender == oppositeGender);
 
-        if (isValidTarget)
-            selectedId = targetId;
+        return isValidTarget ? candidateId : null;
     }
 
     var existing = await db.Votes
@@ -964,15 +1005,52 @@ app.MapPost("/vote/save", async (
         .ToListAsync();
     db.Votes.RemoveRange(existing);
 
-    if (selectedId is not null)
+    if (parsedVoteType == VoteType.Final)
     {
-        db.Votes.Add(new ParticipantVote
+        var first = await ResolveTargetAsync(targetId1);
+        var second = await ResolveTargetAsync(targetId2);
+
+        if (first is not null && second is not null && first == second)
+            return Results.Redirect("/vote/final?error=same");
+
+        if (first is not null)
         {
-            EventId = session.EventId,
-            VoterApplicationId = session.ApplicationId,
-            TargetApplicationId = selectedId.Value,
-            VoteType = parsedVoteType
-        });
+            db.Votes.Add(new ParticipantVote
+            {
+                EventId = session.EventId,
+                VoterApplicationId = session.ApplicationId,
+                TargetApplicationId = first.Value,
+                VoteType = parsedVoteType,
+                Priority = 1
+            });
+        }
+
+        if (second is not null)
+        {
+            db.Votes.Add(new ParticipantVote
+            {
+                EventId = session.EventId,
+                VoterApplicationId = session.ApplicationId,
+                TargetApplicationId = second.Value,
+                VoteType = parsedVoteType,
+                Priority = 2
+            });
+        }
+    }
+    else
+    {
+        var selectedId = await ResolveTargetAsync(targetId);
+        if (selectedId is not null)
+        {
+            db.Votes.Add(new ParticipantVote
+            {
+                EventId = session.EventId,
+                VoterApplicationId = session.ApplicationId,
+                TargetApplicationId = selectedId.Value,
+                VoteType = parsedVoteType,
+                Priority = 1
+            });
+        }
     }
 
     await db.SaveChangesAsync();
@@ -980,6 +1058,21 @@ app.MapPost("/vote/save", async (
     var redirectPath = parsedVoteType == VoteType.Mid ? "/vote/mid" : "/vote/final";
     return Results.Redirect($"{redirectPath}?saved=true");
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Participant)).DisableAntiforgery();
+
+app.MapPost("/vote/final/generate", async (
+    [FromForm] int eventId,
+    [FromForm] string? venue,
+    SeatMatchingService seatMatching) =>
+{
+    var (_, error) = await seatMatching.GenerateFinalCoupleMatchingAsync(eventId);
+
+    var parsedVenue = VenueHelper.TryParse(venue) ?? EventVenue.UnoCoffee;
+    var extraQuery = string.IsNullOrEmpty(error)
+        ? "generated=true"
+        : $"generateError={Uri.EscapeDataString(error)}";
+
+    return Results.Redirect(VenueHelper.AdminPageUrl("/vote-results/final", parsedVenue, eventId, extraQuery));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapPost("/seating/mid/generate", async (
     [FromForm] int eventId,

@@ -104,7 +104,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<ParticipantVote>(entity =>
         {
             entity.ToTable("ParticipantVotes");
-            entity.HasIndex(v => new { v.VoterApplicationId, v.TargetApplicationId, v.VoteType }).IsUnique();
+            entity.HasIndex(v => new { v.VoterApplicationId, v.VoteType, v.Priority }).IsUnique();
             entity.HasOne(v => v.Event)
                 .WithMany()
                 .HasForeignKey(v => v.EventId)

@@ -377,6 +377,20 @@ html:has(.login-shell) body {
     line-height: 1.5;
 }
 
+.vote-priority-section {
+    margin-bottom: 24px;
+}
+
+.vote-priority-heading {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.vote-error {
+    margin-bottom: 12px;
+}
+
 .vote-list {
     display: flex;
     flex-direction: column;
@@ -1306,6 +1320,22 @@ html:has(.login-shell) body {
     color: #2e7d32;
     font-size: 12px;
     font-weight: 700;
+}
+
+.arrived-badge {
+    background: #fff3e0;
+    color: #ef6c00;
+    border: 1px solid #ffcc80;
+}
+
+.summary-item.arrived {
+    color: #ef6c00;
+    background: #fff3e0;
+}
+
+.btn-success {
+    background: #2e7d32;
+    color: #fff;
 }
 
 .toolbar {

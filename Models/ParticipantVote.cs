@@ -7,6 +7,7 @@ public class ParticipantVote
     public int VoterApplicationId { get; set; }
     public int TargetApplicationId { get; set; }
     public VoteType VoteType { get; set; }
+    public int Priority { get; set; } = 1;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     public Event? Event { get; set; }

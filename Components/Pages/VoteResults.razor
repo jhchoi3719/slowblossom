@@ -8,6 +8,7 @@
 @using RotationDating.Web.Services
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject NavigationManager Navigation
+@inject SeatMatchingService SeatMatching
 
 <PageTitle>@_pageTitle</PageTitle>
 
@@ -44,7 +45,7 @@
             <p>등록된 행사 날짜가 없습니다.</p>
         </div>
     }
-    else if (_mutualMatches.Count == 0 && _resultGroups.Count == 0)
+    else if (_mutualMatches.Count == 0 && _resultGroups.Count == 0 && _finalCouples.Count == 0)
     {
         <div class="empty-state">
             <p>이 날짜에 @_pageTitle 결과가 없습니다.</p>
@@ -53,6 +54,26 @@
     }
     else
     {
+        @if (_voteType == VoteType.Final)
+        {
+            <div class="seat-link-banner">
+                <span>최종투표 결과로 커플을 매칭할 수 있습니다.</span>
+                <form method="post" action="/vote/final/generate" class="inline-form">
+                    <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                    <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue!.Value)" />
+                    <button type="submit" class="btn btn-primary btn-sm">최종 커플 매칭</button>
+                </form>
+            </div>
+            @if (Generated)
+            {
+                <div class="alert-success">최종 커플 매칭이 완료되었습니다.</div>
+            }
+            @if (!string.IsNullOrEmpty(_generateError))
+            {
+                <div class="error-text">@_generateError</div>
+            }
+        }
+
         @if (_voteType == VoteType.Mid && _venue == EventVenue.UnoCoffee)
         {
             <div class="seat-link-banner">
@@ -65,11 +86,31 @@
             <span class="summary-item total">@(_maleVoterCount + _femaleVoterCount)명 투표</span>
             <span class="summary-item male">남 @(_maleVoterCount)명</span>
             <span class="summary-item female">여 @(_femaleVoterCount)명</span>
-            <span class="summary-item mutual">서로 선택 @(_mutualMatches.Count)쌍</span>
+            <span class="summary-item mutual">@(_voteType == VoteType.Final ? $"커플 {_finalCouples.Count}쌍" : $"서로 선택 {_mutualMatches.Count}쌍")</span>
             <span class="summary-date">@_selectedEvent.FormattedDate</span>
         </div>
 
-        @if (_mutualMatches.Count > 0)
+        @if (_finalCouples.Count > 0)
+        {
+            @foreach (var group in _finalCouples.GroupBy(c => c.MatchSource).OrderBy(g => g.Key))
+            {
+                <section class="mutual-match-section">
+                    <h2 class="mutual-match-heading">@SeatMatchingService.MatchSourceLabel(group.Key)</h2>
+                    <div class="mutual-match-list">
+                        @foreach (var match in group)
+                        {
+                            <div class="mutual-match-card">
+                                <span class="mutual-person mutual-male">@match.Male!.Name <span class="mutual-gender">남</span></span>
+                                <span class="mutual-arrow">↔</span>
+                                <span class="mutual-person mutual-female">@match.Female!.Name <span class="mutual-gender">여</span></span>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+        }
+
+        @if (_voteType == VoteType.Mid && _mutualMatches.Count > 0)
         {
             <section class="mutual-match-section">
                 <h2 class="mutual-match-heading">서로 선택</h2>
@@ -97,15 +138,39 @@
                         {
                             <span class="participant-tag gender-tag-@(group.VoterGender == "남" ? "male" : "female")">@group.VoterGender</span>
                         }
-                        <span class="vote-result-count">@(group.Targets.Count)명 선택</span>
+                        <span class="vote-result-count">@FormatVoteSummary(group)</span>
                     </div>
                     <div class="participant-body">
-                        <div class="info-row">
-                            <span class="label">선택</span>
-                            <span class="value vote-target-list">
-                                @string.Join(", ", group.Targets.Select(t => $"{t.Name}{(string.IsNullOrWhiteSpace(t.Gender) ? "" : $" ({t.Gender})")}"))
-                            </span>
-                        </div>
+                        @if (group.FirstChoice is not null)
+                        {
+                            <div class="info-row">
+                                <span class="label">1순위</span>
+                                <span class="value vote-target-list">@FormatTarget(group.FirstChoice)</span>
+                            </div>
+                        }
+                        @if (group.SecondChoice is not null)
+                        {
+                            <div class="info-row">
+                                <span class="label">2순위</span>
+                                <span class="value vote-target-list">@FormatTarget(group.SecondChoice)</span>
+                            </div>
+                        }
+                        @if (_voteType == VoteType.Mid)
+                        {
+                            <div class="info-row">
+                                <span class="label">선택</span>
+                                <span class="value vote-target-list">
+                                    @string.Join(", ", group.Targets.Select(t => FormatTarget(t)))
+                                </span>
+                            </div>
+                        }
+                        @if (_voteType == VoteType.Final && group.FirstChoice is null && group.SecondChoice is null)
+                        {
+                            <div class="info-row">
+                                <span class="label">선택</span>
+                                <span class="value vote-target-list">선택 없음</span>
+                            </div>
+                        }
                     </div>
                 </div>
             }
@@ -121,6 +186,12 @@
     [SupplyParameterFromQuery(Name = "venue")]
     public string? Venue { get; set; }
 
+    [SupplyParameterFromQuery]
+    public bool Generated { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? GenerateError { get; set; }
+
     private EventVenue? _venue;
     private string _homeUrl = "/home";
     private string _venueSubtitle = "";
@@ -131,9 +202,11 @@
     private Event? _selectedEvent;
     private List<VoteResultGroup> _resultGroups = [];
     private List<MutualMatch> _mutualMatches = [];
+    private List<ParticipantAiMatch> _finalCouples = [];
     private Dictionary<int, int> _voteCountsByEvent = [];
     private int _maleVoterCount;
     private int _femaleVoterCount;
+    private string _generateError = "";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -144,7 +217,9 @@
         _pageTitle = _voteType == VoteType.Mid ? "중간투표 결과" : "최종투표 결과";
         _pageSubtitle = _voteType == VoteType.Mid
             ? "중간투표에서 누가 누구를 선택했는지 확인합니다"
-            : "최종투표에서 누가 누구를 선택했는지 확인합니다";
+            : "최종투표 1·2순위 선택과 커플 매칭 결과를 확인합니다";
+
+        _generateError = GenerateError ?? "";
 
         _venue = VenueHelper.TryParse(Venue);
         _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
@@ -182,31 +257,43 @@
 
         if (_selectedEvent is null) return;
 
+        if (_voteType == VoteType.Final)
+            _finalCouples = await SeatMatching.GetFinalCoupleMatchingAsync(_selectedEvent.Id);
+
         var votes = await db.Votes
             .Include(v => v.Voter)
             .Include(v => v.Target)
             .Where(v => v.EventId == _selectedEvent.Id && v.VoteType == _voteType)
             .ToListAsync();
 
-        var mutualParticipantIds = SeatMatchingService.GetMutualParticipantIds(votes);
-        _mutualMatches = BuildMutualMatches(votes);
+        var mutualParticipantIds = _voteType == VoteType.Final
+            ? _finalCouples
+                .SelectMany(m => new[] { m.MaleApplicationId, m.FemaleApplicationId })
+                .ToHashSet()
+            : SeatMatchingService.GetMutualParticipantIds(votes);
+        _mutualMatches = _voteType == VoteType.Mid ? BuildMutualMatches(votes) : [];
 
         _resultGroups = votes
-            .Where(v => !mutualParticipantIds.Contains(v.VoterApplicationId))
             .GroupBy(v => v.VoterApplicationId)
             .Select(g =>
             {
                 var voter = g.First().Voter!;
+                var first = g.FirstOrDefault(v => v.Priority == 1)?.Target;
+                var second = g.FirstOrDefault(v => v.Priority == 2)?.Target;
                 return new VoteResultGroup
                 {
+                    VoterId = g.Key,
                     VoterName = voter.Name,
                     VoterGender = voter.Gender,
+                    FirstChoice = first is null ? null : new VoteTargetInfo { Name = first.Name, Gender = first.Gender },
+                    SecondChoice = second is null ? null : new VoteTargetInfo { Name = second.Name, Gender = second.Gender },
                     Targets = g.Select(v => v.Target!)
                         .OrderBy(t => t.Name)
                         .Select(t => new VoteTargetInfo { Name = t.Name, Gender = t.Gender })
                         .ToList()
                 };
             })
+            .Where(g => !mutualParticipantIds.Contains(g.VoterId))
             .OrderBy(g => g.VoterGender)
             .ThenBy(g => g.VoterName)
             .ToList();
@@ -280,10 +367,22 @@
         _ => ""
     };
 
+    private static string FormatTarget(VoteTargetInfo target) =>
+        $"{target.Name}{(string.IsNullOrWhiteSpace(target.Gender) ? "" : $" ({target.Gender})")}";
+
+    private static string FormatVoteSummary(VoteResultGroup group)
+    {
+        var count = (group.FirstChoice is not null ? 1 : 0) + (group.SecondChoice is not null ? 1 : 0);
+        return count == 0 ? "선택 없음" : $"{count}명 선택";
+    }
+
     private sealed class VoteResultGroup
     {
+        public int VoterId { get; set; }
         public string VoterName { get; set; } = "";
         public string? VoterGender { get; set; }
+        public VoteTargetInfo? FirstChoice { get; set; }
+        public VoteTargetInfo? SecondChoice { get; set; }
         public List<VoteTargetInfo> Targets { get; set; } = [];
     }
 
