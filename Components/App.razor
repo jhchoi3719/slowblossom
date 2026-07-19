@@ -345,6 +345,29 @@
             var container = document.getElementById('candidate-date-inputs');
             if (container) refreshCandidateDateRows(container);
         });
+
+        function getVoteRadioFromEvent(e) {
+            var input = e.target.closest('.vote-form input[type="radio"]');
+            if (input) return input;
+            var card = e.target.closest('.vote-form .vote-card');
+            return card ? card.querySelector('input[type="radio"]') : null;
+        }
+
+        document.addEventListener('mousedown', function (e) {
+            var input = getVoteRadioFromEvent(e);
+            if (!input) return;
+            input.dataset.prevChecked = input.checked ? '1' : '0';
+        });
+
+        document.addEventListener('click', function (e) {
+            var input = getVoteRadioFromEvent(e);
+            if (!input) return;
+            if (input.dataset.prevChecked === '1') {
+                input.checked = false;
+                input.dataset.prevChecked = '0';
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 
