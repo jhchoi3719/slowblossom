@@ -44,18 +44,19 @@
     }
     else
     {
-        <form method="post" action="/vote/save" class="vote-form">
+        <form method="post" action="/vote/save" class="vote-form @(_voteType == VoteType.Final ? "vote-form-final" : "")">
             <input type="hidden" name="voteType" value="@_voteType" />
 
             @if (_voteType == VoteType.Final)
             {
-                <p class="vote-hint">1순위와 2순위를 각각 선택할 수 있습니다. 선택한 항목을 다시 누르면 선택이 취소됩니다.</p>
+                <p class="vote-hint">1순위를 먼저 선택해 주세요. 사람을 선택하면 2순위를 고를 수 있습니다.</p>
 
-                <section class="vote-priority-section">
-                    <h2 class="vote-priority-heading">1순위</h2>
+                <section class="vote-priority-section" id="vote-priority-1">
+                    <h2 class="vote-priority-heading">1순위 <span class="vote-required">필수</span></h2>
                     <div class="vote-list">
                         @foreach (var person in _candidates)
                         {
+                            var birthYear = ParticipantApplication.ToBirthYearLabel(person.BirthDate);
                             <label class="vote-card @(person.Gender == "남" ? "vote-male" : "vote-female")">
                                 <input type="radio"
                                        name="targetId1"
@@ -63,37 +64,62 @@
                                        checked="@(_selectedFirstId == person.Id)" />
                                 <span class="vote-card-body">
                                     <span class="vote-name">@person.Name</span>
-                                    @if (!string.IsNullOrWhiteSpace(person.BirthDate))
+                                    @if (!string.IsNullOrWhiteSpace(birthYear))
                                     {
-                                        <span class="vote-meta">@person.BirthDate</span>
+                                        <span class="vote-meta">@birthYear</span>
                                     }
                                 </span>
                                 <span class="vote-check">✓</span>
                             </label>
                         }
+                        <label class="vote-card vote-none">
+                            <input type="radio"
+                                   name="targetId1"
+                                   value="none"
+                                   checked="@_firstIsNone" />
+                            <span class="vote-card-body">
+                                <span class="vote-name">없음</span>
+                                <span class="vote-meta">선택할 사람이 없습니다</span>
+                            </span>
+                            <span class="vote-check">✓</span>
+                        </label>
                     </div>
                 </section>
 
-                <section class="vote-priority-section">
+                <section class="vote-priority-section @(_showSecondPriority ? "" : "vote-priority-hidden")"
+                         id="vote-priority-2">
                     <h2 class="vote-priority-heading">2순위</h2>
-                    <div class="vote-list">
+                    <div class="vote-list" id="vote-list-2">
                         @foreach (var person in _candidates)
                         {
-                            <label class="vote-card @(person.Gender == "남" ? "vote-male" : "vote-female")">
+                            var birthYear = ParticipantApplication.ToBirthYearLabel(person.BirthDate);
+                            <label class="vote-card @(person.Gender == "남" ? "vote-male" : "vote-female")"
+                                   data-candidate-id="@person.Id">
                                 <input type="radio"
                                        name="targetId2"
                                        value="@person.Id"
                                        checked="@(_selectedSecondId == person.Id)" />
                                 <span class="vote-card-body">
                                     <span class="vote-name">@person.Name</span>
-                                    @if (!string.IsNullOrWhiteSpace(person.BirthDate))
+                                    @if (!string.IsNullOrWhiteSpace(birthYear))
                                     {
-                                        <span class="vote-meta">@person.BirthDate</span>
+                                        <span class="vote-meta">@birthYear</span>
                                     }
                                 </span>
                                 <span class="vote-check">✓</span>
                             </label>
                         }
+                        <label class="vote-card vote-none">
+                            <input type="radio"
+                                   name="targetId2"
+                                   value="none"
+                                   checked="@_secondIsNone" />
+                            <span class="vote-card-body">
+                                <span class="vote-name">없음</span>
+                                <span class="vote-meta">선택할 사람이 없습니다</span>
+                            </span>
+                            <span class="vote-check">✓</span>
+                        </label>
                     </div>
                 </section>
             }
@@ -104,6 +130,7 @@
                 <div class="vote-list">
                     @foreach (var person in _candidates)
                     {
+                        var birthYear = ParticipantApplication.ToBirthYearLabel(person.BirthDate);
                         <label class="vote-card @(person.Gender == "남" ? "vote-male" : "vote-female")">
                             <input type="radio"
                                    name="targetId"
@@ -111,9 +138,9 @@
                                    checked="@(_selectedFirstId == person.Id)" />
                             <span class="vote-card-body">
                                 <span class="vote-name">@person.Name</span>
-                                @if (!string.IsNullOrWhiteSpace(person.BirthDate))
+                                @if (!string.IsNullOrWhiteSpace(birthYear))
                                 {
-                                    <span class="vote-meta">@person.BirthDate</span>
+                                    <span class="vote-meta">@birthYear</span>
                                 }
                             </span>
                             <span class="vote-check">✓</span>
@@ -145,10 +172,14 @@
     private List<ParticipantApplication> _candidates = [];
     private int? _selectedFirstId;
     private int? _selectedSecondId;
+    private bool _firstIsNone;
+    private bool _secondIsNone;
+    private bool _showSecondPriority;
 
     private string _errorMessage => Error switch
     {
         "same" => "1순위와 2순위는 같은 사람을 선택할 수 없습니다.",
+        "required1" => "1순위를 선택해 주세요.",
         _ => ""
     };
 
@@ -161,7 +192,7 @@
         _pageTitle = _voteType == VoteType.Mid ? "중간투표" : "최종투표";
         _pageSubtitle = _voteType == VoteType.Mid
             ? "지금까지 대화한 분 중 마음에 드는 이성을 선택하세요"
-            : "1순위와 2순위까지 선택할 수 있습니다. 선택하지 않아도 됩니다";
+            : "1순위는 필수입니다. 사람을 선택하면 2순위도 고를 수 있습니다";
         _saved = Saved;
 
         if (AuthState is null) return;
@@ -191,7 +222,19 @@
             .Where(v => v.VoterApplicationId == _session.ApplicationId && v.VoteType == _voteType)
             .ToListAsync();
 
-        _selectedFirstId = existingVotes.FirstOrDefault(v => v.Priority == 1)?.TargetApplicationId;
-        _selectedSecondId = existingVotes.FirstOrDefault(v => v.Priority == 2)?.TargetApplicationId;
+        var firstVote = existingVotes.FirstOrDefault(v => v.Priority == 1);
+        var secondVote = existingVotes.FirstOrDefault(v => v.Priority == 2);
+
+        if (firstVote?.IsExplicitNone == true)
+            _firstIsNone = true;
+        else
+            _selectedFirstId = firstVote?.TargetApplicationId;
+
+        if (secondVote?.IsExplicitNone == true)
+            _secondIsNone = true;
+        else
+            _selectedSecondId = secondVote?.TargetApplicationId;
+
+        _showSecondPriority = _selectedFirstId is not null && !_firstIsNone;
     }
 }

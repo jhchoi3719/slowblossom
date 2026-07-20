@@ -1000,8 +1000,8 @@ app.MapPost("/vote/save", async (
     HttpContext context,
     [FromForm] string voteType,
     [FromForm] int? targetId,
-    [FromForm] int? targetId1,
-    [FromForm] int? targetId2,
+    [FromForm] string? targetId1,
+    [FromForm] string? targetId2,
     IDbContextFactory<AppDbContext> dbFactory) =>
 {
     var session = ParticipantSession.FromClaims(context.User);
@@ -1045,13 +1045,40 @@ app.MapPost("/vote/save", async (
 
     if (parsedVoteType == VoteType.Final)
     {
-        var first = await ResolveTargetAsync(targetId1);
-        var second = await ResolveTargetAsync(targetId2);
+        if (string.IsNullOrWhiteSpace(targetId1))
+            return Results.Redirect("/vote/final?error=required1");
+
+        int? first = null;
+        int? second = null;
+        var firstIsNone = string.Equals(targetId1.Trim(), "none", StringComparison.OrdinalIgnoreCase);
+        var secondIsNone = !firstIsNone
+            && string.Equals(targetId2?.Trim(), "none", StringComparison.OrdinalIgnoreCase);
+
+        if (!firstIsNone && int.TryParse(targetId1, out var parsedFirst))
+            first = await ResolveTargetAsync(parsedFirst);
+
+        if (!firstIsNone && !secondIsNone && int.TryParse(targetId2, out var parsedSecond))
+            second = await ResolveTargetAsync(parsedSecond);
+
+        if (!firstIsNone && first is null)
+            return Results.Redirect("/vote/final?error=required1");
 
         if (first is not null && second is not null && first == second)
             return Results.Redirect("/vote/final?error=same");
 
-        if (first is not null)
+        if (firstIsNone)
+        {
+            db.Votes.Add(new ParticipantVote
+            {
+                EventId = session.EventId,
+                VoterApplicationId = session.ApplicationId,
+                TargetApplicationId = session.ApplicationId,
+                VoteType = parsedVoteType,
+                Priority = 1,
+                IsExplicitNone = true
+            });
+        }
+        else if (first is not null)
         {
             db.Votes.Add(new ParticipantVote
             {
@@ -1063,7 +1090,19 @@ app.MapPost("/vote/save", async (
             });
         }
 
-        if (second is not null)
+        if (secondIsNone)
+        {
+            db.Votes.Add(new ParticipantVote
+            {
+                EventId = session.EventId,
+                VoterApplicationId = session.ApplicationId,
+                TargetApplicationId = session.ApplicationId,
+                VoteType = parsedVoteType,
+                Priority = 2,
+                IsExplicitNone = true
+            });
+        }
+        else if (!firstIsNone && second is not null)
         {
             db.Votes.Add(new ParticipantVote
             {

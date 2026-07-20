@@ -141,34 +141,41 @@
                         <span class="vote-result-count">@FormatVoteSummary(group)</span>
                     </div>
                     <div class="participant-body">
-                        @if (group.FirstChoice is not null)
+                        @if (_voteType == VoteType.Final)
                         {
-                            <div class="info-row">
-                                <span class="label">1순위</span>
-                                <span class="value vote-target-list">@FormatTarget(group.FirstChoice)</span>
-                            </div>
+                            @if (!group.HasSubmitted)
+                            {
+                                <div class="info-row">
+                                    <span class="label">상태</span>
+                                    <span class="value vote-status-not-voted">미투표</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="info-row">
+                                    <span class="label">1순위</span>
+                                    <span class="value vote-target-list @(group.FirstIsNone ? "vote-status-none" : "")">@FormatFinalPriority(group.FirstIsNone, group.FirstChoice)</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">2순위</span>
+                                    <span class="value vote-target-list @(group.SecondIsNone ? "vote-status-none" : "")">@FormatFinalPriority(group.SecondIsNone, group.SecondChoice)</span>
+                                </div>
+                            }
                         }
-                        @if (group.SecondChoice is not null)
-                        {
-                            <div class="info-row">
-                                <span class="label">2순위</span>
-                                <span class="value vote-target-list">@FormatTarget(group.SecondChoice)</span>
-                            </div>
-                        }
-                        @if (_voteType == VoteType.Mid)
+                        else
                         {
                             <div class="info-row">
                                 <span class="label">선택</span>
                                 <span class="value vote-target-list">
-                                    @string.Join(", ", group.Targets.Select(t => FormatTarget(t)))
+                                    @if (group.Targets.Count == 0)
+                                    {
+                                        <span>선택 없음</span>
+                                    }
+                                    else
+                                    {
+                                        @string.Join(", ", group.Targets.Select(t => FormatTarget(t)))
+                                    }
                                 </span>
-                            </div>
-                        }
-                        @if (_voteType == VoteType.Final && group.FirstChoice is null && group.SecondChoice is null)
-                        {
-                            <div class="info-row">
-                                <span class="label">선택</span>
-                                <span class="value vote-target-list">선택 없음</span>
                             </div>
                         }
                     </div>
@@ -273,38 +280,75 @@
             : SeatMatchingService.GetMutualParticipantIds(votes);
         _mutualMatches = _voteType == VoteType.Mid ? BuildMutualMatches(votes) : [];
 
-        _resultGroups = votes
-            .GroupBy(v => v.VoterApplicationId)
-            .Select(g =>
-            {
-                var voter = g.First().Voter!;
-                var first = g.FirstOrDefault(v => v.Priority == 1)?.Target;
-                var second = g.FirstOrDefault(v => v.Priority == 2)?.Target;
-                return new VoteResultGroup
+        if (_voteType == VoteType.Final)
+        {
+            var confirmedParticipants = await db.Applications
+                .Where(a => a.EventId == _selectedEvent.Id && a.IsConfirmed)
+                .OrderBy(a => a.Gender)
+                .ThenBy(a => a.Name)
+                .ToListAsync();
+
+            var votesByVoter = votes
+                .GroupBy(v => v.VoterApplicationId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            _resultGroups = confirmedParticipants
+                .Where(p => !mutualParticipantIds.Contains(p.Id))
+                .Select(p =>
                 {
-                    VoterId = g.Key,
-                    VoterName = voter.Name,
-                    VoterGender = voter.Gender,
-                    FirstChoice = first is null ? null : new VoteTargetInfo { Name = first.Name, Gender = first.Gender },
-                    SecondChoice = second is null ? null : new VoteTargetInfo { Name = second.Name, Gender = second.Gender },
-                    Targets = g.Select(v => v.Target!)
-                        .OrderBy(t => t.Name)
-                        .Select(t => new VoteTargetInfo { Name = t.Name, Gender = t.Gender })
-                        .ToList()
-                };
-            })
-            .Where(g => !mutualParticipantIds.Contains(g.VoterId))
-            .OrderBy(g => g.VoterGender)
-            .ThenBy(g => g.VoterName)
-            .ToList();
+                    votesByVoter.TryGetValue(p.Id, out var voterVotes);
+                    var hasSubmitted = voterVotes is { Count: > 0 };
+                    var firstVote = voterVotes?.FirstOrDefault(v => v.Priority == 1);
+                    var secondVote = voterVotes?.FirstOrDefault(v => v.Priority == 2);
+                    var firstTarget = firstVote is { IsExplicitNone: false } ? firstVote.Target : null;
+                    var secondTarget = secondVote is { IsExplicitNone: false } ? secondVote.Target : null;
 
-        var voters = votes
-            .GroupBy(v => v.VoterApplicationId)
-            .Select(g => g.First().Voter!)
-            .ToList();
+                    return new VoteResultGroup
+                    {
+                        VoterId = p.Id,
+                        VoterName = p.Name,
+                        VoterGender = p.Gender,
+                        HasSubmitted = hasSubmitted,
+                        FirstIsNone = firstVote?.IsExplicitNone == true,
+                        SecondIsNone = secondVote?.IsExplicitNone == true,
+                        FirstChoice = firstTarget is null ? null : new VoteTargetInfo { Name = firstTarget.Name, Gender = firstTarget.Gender },
+                        SecondChoice = secondTarget is null ? null : new VoteTargetInfo { Name = secondTarget.Name, Gender = secondTarget.Gender }
+                    };
+                })
+                .ToList();
+        }
+        else
+        {
+            _resultGroups = votes
+                .Where(v => !v.IsExplicitNone)
+                .GroupBy(v => v.VoterApplicationId)
+                .Select(g =>
+                {
+                    var voter = g.First().Voter!;
+                    return new VoteResultGroup
+                    {
+                        VoterId = g.Key,
+                        VoterName = voter.Name,
+                        VoterGender = voter.Gender,
+                        HasSubmitted = true,
+                        Targets = g.Select(v => v.Target!)
+                            .OrderBy(t => t.Name)
+                            .Select(t => new VoteTargetInfo { Name = t.Name, Gender = t.Gender })
+                            .ToList()
+                    };
+                })
+                .Where(g => !mutualParticipantIds.Contains(g.VoterId))
+                .OrderBy(g => g.VoterGender)
+                .ThenBy(g => g.VoterName)
+                .ToList();
+        }
 
-        _maleVoterCount = voters.Count(v => v.Gender == "남");
-        _femaleVoterCount = voters.Count(v => v.Gender == "여");
+        var voters = _voteType == VoteType.Final
+            ? _resultGroups.Where(g => g.HasSubmitted).Select(g => g.VoterGender).ToList()
+            : votes.GroupBy(v => v.VoterApplicationId).Select(g => g.First().Voter!.Gender).ToList();
+
+        _maleVoterCount = voters.Count(g => g == "남");
+        _femaleVoterCount = voters.Count(g => g == "여");
     }
 
     private static List<MutualMatch> BuildMutualMatches(List<ParticipantVote> votes)
@@ -370,10 +414,35 @@
     private static string FormatTarget(VoteTargetInfo target) =>
         $"{target.Name}{(string.IsNullOrWhiteSpace(target.Gender) ? "" : $" ({target.Gender})")}";
 
+    private static string FormatFinalPriority(bool isNone, VoteTargetInfo? choice)
+    {
+        if (isNone)
+            return "없음";
+        if (choice is not null)
+            return FormatTarget(choice);
+        return "미선택";
+    }
+
     private static string FormatVoteSummary(VoteResultGroup group)
     {
-        var count = (group.FirstChoice is not null ? 1 : 0) + (group.SecondChoice is not null ? 1 : 0);
-        return count == 0 ? "선택 없음" : $"{count}명 선택";
+        if (!group.HasSubmitted)
+            return "미투표";
+
+        if (group.FirstIsNone && group.SecondIsNone && group.FirstChoice is null && group.SecondChoice is null)
+            return "없음";
+
+        var parts = new List<string>();
+        if (group.FirstIsNone)
+            parts.Add("1순위 없음");
+        else if (group.FirstChoice is not null)
+            parts.Add("1순위 선택");
+
+        if (group.SecondIsNone)
+            parts.Add("2순위 없음");
+        else if (group.SecondChoice is not null)
+            parts.Add("2순위 선택");
+
+        return parts.Count == 0 ? "저장됨" : string.Join(", ", parts);
     }
 
     private sealed class VoteResultGroup
@@ -381,6 +450,9 @@
         public int VoterId { get; set; }
         public string VoterName { get; set; } = "";
         public string? VoterGender { get; set; }
+        public bool HasSubmitted { get; set; }
+        public bool FirstIsNone { get; set; }
+        public bool SecondIsNone { get; set; }
         public VoteTargetInfo? FirstChoice { get; set; }
         public VoteTargetInfo? SecondChoice { get; set; }
         public List<VoteTargetInfo> Targets { get; set; } = [];

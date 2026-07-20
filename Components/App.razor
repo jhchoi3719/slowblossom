@@ -341,10 +341,58 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            var container = document.getElementById('candidate-date-inputs');
-            if (container) refreshCandidateDateRows(container);
-        });
+        function updateFinalVoteSecondSection(form) {
+            var section2 = form.querySelector('#vote-priority-2');
+            if (!section2) return;
+
+            var checked = form.querySelector('input[name="targetId1"]:checked');
+            if (!checked) {
+                section2.classList.add('vote-priority-hidden');
+                form.querySelectorAll('input[name="targetId2"]').forEach(function (radio) {
+                    radio.checked = false;
+                });
+                return;
+            }
+
+            if (checked.value === 'none') {
+                section2.classList.add('vote-priority-hidden');
+                form.querySelectorAll('input[name="targetId2"]').forEach(function (radio) {
+                    radio.checked = false;
+                });
+                return;
+            }
+
+            section2.classList.remove('vote-priority-hidden');
+            section2.querySelectorAll('.vote-card[data-candidate-id]').forEach(function (card) {
+                var candidateId = card.getAttribute('data-candidate-id');
+                var hidden = candidateId === checked.value;
+                card.style.display = hidden ? 'none' : '';
+                if (hidden) {
+                    var radio = card.querySelector('input[type="radio"]');
+                    if (radio && radio.checked) radio.checked = false;
+                }
+            });
+        }
+
+        function initFinalVoteForms() {
+            document.querySelectorAll('.vote-form-final').forEach(function (form) {
+                updateFinalVoteSecondSection(form);
+
+                form.addEventListener('change', function (e) {
+                    if (e.target && e.target.name === 'targetId1') {
+                        updateFinalVoteSecondSection(form);
+                    }
+                });
+
+                form.addEventListener('submit', function (e) {
+                    var checked = form.querySelector('input[name="targetId1"]:checked');
+                    if (!checked) {
+                        e.preventDefault();
+                        alert('1순위를 선택해 주세요.');
+                    }
+                });
+            });
+        }
 
         function getVoteRadioFromEvent(e) {
             var input = e.target.closest('.vote-form input[type="radio"]');
@@ -366,7 +414,17 @@
                 input.checked = false;
                 input.dataset.prevChecked = '0';
                 e.preventDefault();
+                var form = input.closest('.vote-form-final');
+                if (form && input.name === 'targetId1') {
+                    updateFinalVoteSecondSection(form);
+                }
             }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var container = document.getElementById('candidate-date-inputs');
+            if (container) refreshCandidateDateRows(container);
+            initFinalVoteForms();
         });
     </script>
 </body>

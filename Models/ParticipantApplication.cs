@@ -31,4 +31,34 @@ public class ParticipantApplication
         false => "X",
         _ => "-"
     };
+
+    public static string? ToBirthYearLabel(string? birthDate)
+    {
+        if (string.IsNullOrWhiteSpace(birthDate))
+            return null;
+
+        var trimmed = birthDate.Trim();
+        if (trimmed.EndsWith("년생", StringComparison.Ordinal))
+            return trimmed;
+
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+        if (digits.Length >= 8
+            && int.TryParse(digits[..4], out var fullYear)
+            && fullYear is >= 1900 and <= 2099)
+            return $"{fullYear % 100:00}년생";
+
+        if (digits.Length >= 6
+            && int.TryParse(digits[..2], out var yy))
+        {
+            var year = yy <= 30 ? 2000 + yy : 1900 + yy;
+            return $"{year % 100:00}년생";
+        }
+
+        if (digits.Length == 4
+            && int.TryParse(digits, out var yearOnly)
+            && yearOnly is >= 1900 and <= 2099)
+            return $"{yearOnly % 100:00}년생";
+
+        return null;
+    }
 }

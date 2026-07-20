@@ -329,6 +329,9 @@ public static class DatabaseInitializer
         if (!columns.Contains("Priority"))
             await db.Database.ExecuteSqlRawAsync(
                 "ALTER TABLE ParticipantVotes ADD COLUMN Priority INTEGER NOT NULL DEFAULT 1");
+        if (!columns.Contains("IsExplicitNone"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ParticipantVotes ADD COLUMN IsExplicitNone INTEGER NOT NULL DEFAULT 0");
 
         await db.Database.ExecuteSqlRawAsync("DROP INDEX IF EXISTS IX_ParticipantVotes_Voter_Target_Type");
         await db.Database.ExecuteSqlRawAsync("""

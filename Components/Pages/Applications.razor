@@ -238,7 +238,7 @@
             <a class="btn @GetGenderFilterButtonClass("여")" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(gender: "여"))">여 (@_femaleApplicationCount)</a>
         </div>
         <div class="toolbar toolbar-actions">
-            <a class="btn @GetConfirmFilterButtonClass(null)" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery())">전체 (@_totalApplicationCount)</a>
+            <a class="btn @GetConfirmFilterButtonClass(null)" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(confirmed: ""))">전체 (@_totalApplicationCount)</a>
             <a class="btn @GetConfirmFilterButtonClass("confirmed")" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(confirmed: "confirmed"))">확정 (@_confirmedApplicationCount)</a>
             <a class="btn @GetConfirmFilterButtonClass("pending")" href="@GetPageUrl(_selectedEvent.Id, BuildFilterQuery(confirmed: "pending"))">미확정 (@_pendingApplicationCount)</a>
         </div>

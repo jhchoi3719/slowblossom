@@ -98,11 +98,11 @@ public class SeatMatchingService(
             .ToListAsync(cancellationToken);
 
         var firstChoices = votes
-            .Where(v => v.Priority == 1)
+            .Where(v => v.Priority == 1 && !v.IsExplicitNone)
             .ToDictionary(v => v.VoterApplicationId, v => v.TargetApplicationId);
 
         var secondChoices = votes
-            .Where(v => v.Priority == 2)
+            .Where(v => v.Priority == 2 && !v.IsExplicitNone)
             .ToDictionary(v => v.VoterApplicationId, v => v.TargetApplicationId);
 
         var matched = new HashSet<int>();
