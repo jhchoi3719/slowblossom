@@ -8,4 +8,6 @@ obj/
 *.db-wal
 appsettings.Development.json
 appsettings.Secrets.json
+mail-notification-settings.json
+mail-notification-state.json
 certs/

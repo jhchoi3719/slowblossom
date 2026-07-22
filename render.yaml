@@ -16,3 +16,15 @@ services:
         value: /data
       - key: GEMINI_API_KEY
         sync: false
+      - key: MAIL_NOTIFICATION_ENABLED
+        value: "false"
+      - key: NAVER_IMAP_USERNAME
+        sync: false
+      - key: NAVER_IMAP_PASSWORD
+        sync: false
+      - key: NAVER_IMAP_SUBJECT_CONTAINS
+        value: "네이버폼"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false

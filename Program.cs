@@ -9,6 +9,7 @@ using RotationDating.Web.Components;
 using RotationDating.Web.Data;
 using RotationDating.Web.Models;
 using RotationDating.Web.Services;
+using RotationDating.Web.Services.MailNotification;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,12 +46,23 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    if (!builder.Environment.IsDevelopment())
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 builder.Services.AddScoped<QuestionCardService>();
 builder.Services.AddScoped<SurveyService>();
 builder.Services.AddHttpClient(nameof(SeatMatchingService));
 builder.Services.AddScoped<SeatMatchingService>();
 builder.Services.AddScoped<ParticipantConsentService>();
+builder.Services.AddOptions<MailNotificationOptions>()
+    .Configure<IConfiguration>((options, configuration) => MailNotificationOptionsSetup.Configure(configuration, options));
+builder.Services.AddSingleton<MailNotificationStateStore>();
+builder.Services.AddSingleton<MailNotificationSettingsStore>();
+builder.Services.AddSingleton<MailNotificationSettingsProvider>();
+builder.Services.AddHttpClient<TelegramNotifier>();
+builder.Services.AddScoped<NaverImapMailMonitor>();
+builder.Services.AddHostedService<MailNotificationBackgroundService>();
 
 var dataDir = Environment.GetEnvironmentVariable("DATA_DIR");
 if (string.IsNullOrWhiteSpace(dataDir))
@@ -1175,6 +1187,85 @@ app.MapPost("/seating/initial/generate", async (
         return Results.Redirect(await SeatingUrlForEventAsync(dbFactory, "/seating/initial", eventId, $"generateError={Uri.EscapeDataString(error)}"));
 
     return Results.Redirect(await SeatingUrlForEventAsync(dbFactory, "/seating/initial", eventId, "generated=true"));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/mail-notify/save", async (
+    [FromForm] bool enabled,
+    [FromForm] string? username,
+    [FromForm] string? password,
+    [FromForm] string? subjectContains,
+    [FromForm] string? fromFilter,
+    [FromForm] int pollIntervalSeconds,
+    MailNotificationSettingsProvider settingsProvider) =>
+{
+    if (string.IsNullOrWhiteSpace(username))
+        return Results.Redirect("/admin/mail-notify?error=save");
+
+    await settingsProvider.SaveImapSettingsAsync(new MailNotificationStoredSettings
+    {
+        Enabled = enabled,
+        Username = username,
+        SubjectContains = subjectContains,
+        FromFilter = fromFilter,
+        PollIntervalSeconds = pollIntervalSeconds
+    }, password);
+
+    return Results.Redirect("/admin/mail-notify?saved=1");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/mail-notify/save-telegram", async (
+    [FromForm] string? botToken,
+    [FromForm] string? chatId,
+    MailNotificationSettingsProvider settingsProvider) =>
+{
+    if (string.IsNullOrWhiteSpace(botToken) || string.IsNullOrWhiteSpace(chatId))
+        return Results.Redirect("/admin/mail-notify?error=saveTelegram");
+
+    await settingsProvider.SaveTelegramSettingsAsync(botToken, chatId);
+    return Results.Redirect("/admin/mail-notify?savedTelegram=1");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/mail-notify/test", async (TelegramNotifier telegramNotifier) =>
+{
+    var result = await telegramNotifier.SendMessageAsync("Slowblossom 신청 알림 테스트입니다.");
+    if (result.Success)
+        return Results.Redirect("/admin/mail-notify?sent=1");
+
+    var error = result.ErrorCode switch
+    {
+        "noTelegram" => "noTelegram",
+        _ => "send"
+    };
+
+    var detail = Uri.EscapeDataString(result.ErrorMessage ?? result.ErrorCode ?? "unknown");
+    return Results.Redirect($"/admin/mail-notify?error={error}&detail={detail}");
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+app.MapPost("/admin/mail-notify/check-now", async (NaverImapMailMonitor mailMonitor) =>
+{
+    try
+    {
+        var result = await mailMonitor.SendLatestNaverFormNotificationAsync();
+        if (result.Success)
+        {
+            var subject = Uri.EscapeDataString(result.SentSubject ?? "");
+            return Results.Redirect($"/admin/mail-notify?checked=1&detail={subject}");
+        }
+
+        var error = result.ErrorCode switch
+        {
+            "noMail" => "noMail",
+            "noTelegram" => "noTelegram",
+            "notConfigured" => "imap",
+            _ => "send"
+        };
+        var detail = Uri.EscapeDataString(result.ErrorMessage ?? result.ErrorCode ?? "unknown");
+        return Results.Redirect($"/admin/mail-notify?error={error}&detail={detail}");
+    }
+    catch
+    {
+        return Results.Redirect("/admin/mail-notify?error=imap");
+    }
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapRazorComponents<App>();

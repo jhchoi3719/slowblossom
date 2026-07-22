@@ -2874,3 +2874,44 @@ h1:focus {
         gap: 8px;
     }
 }
+
+.status-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    line-height: 1.8;
+}
+
+.config-pre {
+    background: #f5f7fa;
+    border: 1px solid #e0e4ea;
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-stack > .btn,
+.form-stack > button[type="submit"] {
+    margin-top: 8px;
+    align-self: flex-start;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-field .label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
