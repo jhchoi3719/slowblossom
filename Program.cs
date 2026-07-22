@@ -31,7 +31,7 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/";
+        options.LoginPath = "/login";
         options.Cookie.Name = "RotationDating.Auth";
         options.ExpireTimeSpan = TimeSpan.FromHours(12);
         options.SlidingExpiration = true;
@@ -193,7 +193,7 @@ app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? pas
         || trimmedPassword != application.Password)
     {
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return Results.Redirect(string.IsNullOrEmpty(trimmedPassword) ? "/?error=required" : "/?error=password");
+        return Results.Redirect(string.IsNullOrEmpty(trimmedPassword) ? "/login?error=required" : "/login?error=password");
     }
 
     await ParticipantAuthService.SignInParticipantAsync(context, application);
@@ -1018,7 +1018,7 @@ app.MapPost("/vote/save", async (
 {
     var session = ParticipantSession.FromClaims(context.User);
     if (session is null)
-        return Results.Redirect("/");
+        return Results.Redirect("/login");
 
     if (!Enum.TryParse<VoteType>(voteType, ignoreCase: true, out var parsedVoteType))
         return Results.Redirect("/welcome");
@@ -1030,7 +1030,7 @@ app.MapPost("/vote/save", async (
 
     var voter = await db.Applications.FindAsync(session.ApplicationId);
     if (voter is null || !voter.IsConfirmed || voter.EventId != session.EventId)
-        return Results.Redirect("/");
+        return Results.Redirect("/login");
 
     var oppositeGender = session.OppositeGender;
     if (string.IsNullOrEmpty(oppositeGender))
@@ -1407,7 +1407,7 @@ static IResult InvalidLoginResponse() => Results.Content(
     <body>
         <script>
             alert('이름+행사일(예: 홍길동260705)을 확인해주세요');
-            location.replace('/');
+            location.replace('/login');
         </script>
     </body>
     </html>

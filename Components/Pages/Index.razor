@@ -1,0 +1,166 @@
+@page "/"
+@layout Layout.SiteLayout
+
+<PageTitle>slow blossom</PageTitle>
+
+<section class="site-hero" id="top" aria-label="메인 비주얼">
+    <div class="site-hero-slider" data-site-hero-slider>
+        @foreach (var slide in _slides)
+        {
+            <article class="site-hero-slide @(slide == _slides[0] ? "is-active" : "")" data-site-hero-slide style="@($"--slide-accent:{slide.Accent}")">
+                <div class="site-hero-slide-bg" aria-hidden="true"></div>
+                <div class="site-hero-slide-content">
+                    <p class="site-hero-eyebrow">@slide.Eyebrow</p>
+                    <h1 class="site-hero-title">@((MarkupString)slide.Title.Replace("\n", "<br />"))</h1>
+                    <p class="site-hero-desc">@slide.Description</p>
+                </div>
+            </article>
+        }
+    </div>
+
+    <div class="site-hero-controls">
+        <button type="button" class="site-hero-control" data-site-hero-prev aria-label="이전 슬라이드">‹</button>
+        <div class="site-hero-dots" role="tablist" aria-label="슬라이드 선택">
+            @for (var i = 0; i < _slides.Count; i++)
+            {
+                var index = i;
+                <button type="button"
+                        class="site-hero-dot @(index == 0 ? "is-active" : "")"
+                        data-site-hero-dot="@index"
+                        role="tab"
+                        aria-label="@($"슬라이드 {index + 1}")"
+                        aria-selected="@(index == 0 ? "true" : "false")"></button>
+            }
+        </div>
+        <button type="button" class="site-hero-control" data-site-hero-next aria-label="다음 슬라이드">›</button>
+        <button type="button" class="site-hero-play" data-site-hero-play aria-label="슬라이드 일시정지" aria-pressed="false">⏸</button>
+    </div>
+
+    <a href="#about" class="site-hero-scroll">
+        <span>Scroll down</span>
+        <span class="site-hero-scroll-icon" aria-hidden="true"></span>
+    </a>
+</section>
+
+<section class="site-section site-section-intro" id="about">
+    <div class="site-container">
+        <p class="site-section-eyebrow">About slow blossom</p>
+        <h2 class="site-section-title">특별한 만남을<br class="site-br-mobile" /> 설계하는 브랜드</h2>
+        <p class="site-section-lead">
+            slow blossom은 로테이션 소개팅과 프라이빗 이벤트를 통해
+            진정성 있는 인연의 순간을 만들어 갑니다.
+            기획부터 현장 운영, 참가자 경험까지 전 과정을 직접 설계합니다.
+        </p>
+    </div>
+</section>
+
+<section class="site-section site-section-cards" id="business">
+    <div class="site-container">
+        <div class="site-section-head">
+            <p class="site-section-eyebrow">Business</p>
+            <h2 class="site-section-title">사업분야</h2>
+        </div>
+        <div class="site-card-grid">
+            @foreach (var card in _businessCards)
+            {
+                <article class="site-card">
+                    <span class="site-card-index">@card.Index</span>
+                    <h3 class="site-card-title">@card.Title</h3>
+                    <p class="site-card-desc">@card.Description</p>
+                    <a href="@card.Link"
+                       class="site-card-link"
+                       target="@(card.Link.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "_blank" : null)"
+                       rel="@(card.Link.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "noopener noreferrer" : null)">자세히 보기</a>
+                </article>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="site-section site-section-dark" id="events">
+    <div class="site-container site-events-layout">
+        <div class="site-events-copy">
+            <p class="site-section-eyebrow site-section-eyebrow-light">Events</p>
+            <h2 class="site-section-title site-section-title-light">프리미엄 로테이션 소개팅</h2>
+            <p class="site-section-lead site-section-lead-light">
+                우노커피, 호텔수성스퀘어 등 검증된 공간에서 진행되는
+                slow blossom만의 로테이션 소개팅 프로그램.
+                참가자는 행사 당일 전용 앱으로 질문카드, 투표, 좌석 안내를 받습니다.
+            </p>
+            <a href="/login" class="site-btn site-btn-light">행사 참가 로그인</a>
+        </div>
+        <ul class="site-feature-list">
+            <li>
+                <strong>1:1 로테이션</strong>
+                <span>AI 좌석 매칭과 현장 진행으로 효율적인 만남</span>
+            </li>
+            <li>
+                <strong>질문카드 · 투표</strong>
+                <span>대화를 돕는 콘텐츠와 중간·최종 선택 기능</span>
+            </li>
+            <li>
+                <strong>운영 대시보드</strong>
+                <span>신청서, 참가자, 결과를 한곳에서 관리</span>
+            </li>
+        </ul>
+    </div>
+</section>
+
+<section class="site-section" id="news">
+    <div class="site-container">
+        <div class="site-section-head site-section-head-row">
+            <div>
+                <p class="site-section-eyebrow">News</p>
+                <h2 class="site-section-title">새로운 소식</h2>
+            </div>
+            <a href="https://pf.kakao.com/_cxcUFb" class="site-text-link" target="_blank" rel="noopener noreferrer">카카오 채널 보기</a>
+        </div>
+        <ul class="site-news-list">
+            @foreach (var item in _newsItems)
+            {
+                <li class="site-news-item">
+                    <time datetime="@item.DateIso">@item.DateLabel</time>
+                    <p>@item.Title</p>
+                </li>
+            }
+        </ul>
+    </div>
+</section>
+
+<section class="site-section site-section-cta" id="contact">
+    <div class="site-container site-cta-box">
+        <h2 class="site-section-title">slow blossom과 함께<br class="site-br-mobile" /> 특별한 만남을 시작하세요</h2>
+        <p class="site-section-lead">행사 문의, 제휴, 브랜드 협업은 카카오 채널로 연락해 주세요.</p>
+        <div class="site-cta-actions">
+            <a href="https://pf.kakao.com/_cxcUFb" class="site-btn site-btn-primary" target="_blank" rel="noopener noreferrer">카카오 채널 문의</a>
+            <a href="/login" class="site-btn site-btn-outline">행사 로그인</a>
+        </div>
+    </div>
+</section>
+
+@code {
+    private readonly IReadOnlyList<HeroSlide> _slides =
+    [
+        new("Premium Experience", "새로운 인연,\nslow blossom", "프리미엄 로테이션 소개팅으로 설레는 만남의 시작을 함께합니다.", "#1e4f7a"),
+        new("Curated Events", "공간과 분위기가\n만드는 특별함", "카페, 호텔 라운지 등 감각적인 공간에서 진행되는 맞춤형 이벤트.", "#245c54"),
+        new("Community", "싱싱한팜과 함께\n지속되는 연결", "행사를 넘어 커뮤니티로 이어지는 slow blossom만의 경험.", "#3d4a7a")
+    ];
+
+    private readonly IReadOnlyList<BusinessCard> _businessCards =
+    [
+        new("01", "로테이션 소개팅", "1:1 로테이션 방식의 프리미엄 소개팅 프로그램을 기획·운영합니다.", "/login"),
+        new("02", "이벤트 기획 · 운영", "브랜드 맞춤형 데이팅·네트워킹 이벤트를 End-to-End로 제공합니다.", "/#contact"),
+        new("03", "커뮤니티 · 채널", "싱싱한팜 카카오 채널을 통해 소식과 참여 기회를 전달합니다.", "https://pf.kakao.com/_cxcUFb")
+    ];
+
+    private readonly IReadOnlyList<NewsItem> _newsItems =
+    [
+        new("2026-03-01", "2026. 03. 01", "slow blossom 공식 홈페이지를 새롭게 오픈했습니다."),
+        new("2026-02-15", "2026. 02. 15", "호텔수성스퀘어 로테이션 소개팅 일정 안내"),
+        new("2026-02-01", "2026. 02. 01", "우노커피 프리미엄 소개팅 프로그램 참가자 모집")
+    ];
+
+    private sealed record HeroSlide(string Eyebrow, string Title, string Description, string Accent);
+    private sealed record BusinessCard(string Index, string Title, string Description, string Link);
+    private sealed record NewsItem(string DateIso, string DateLabel, string Title);
+}

@@ -1,0 +1,72 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using RotationDating.Web.Services
+
+<div class="site-shell">
+    <header class="site-header" id="site-header">
+        <div class="site-header-inner">
+            <a href="/" class="site-logo">
+                <span class="site-logo-mark">SB</span>
+                <span class="site-logo-text">slow blossom</span>
+            </a>
+
+            <button type="button" class="site-nav-toggle" id="site-nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav class="site-nav" id="site-nav" aria-label="주요 메뉴">
+                <a href="/#about" class="site-nav-link">회사소개</a>
+                <a href="/#business" class="site-nav-link">사업분야</a>
+                <a href="/#events" class="site-nav-link">행사안내</a>
+                <a href="/#news" class="site-nav-link">소식</a>
+                <a href="/#contact" class="site-nav-link">문의</a>
+                <AuthorizeView>
+                    <Authorized>
+                        @if (context.User.IsInRole(AuthRoles.Admin))
+                        {
+                            <a href="/home" class="site-nav-link site-nav-link-accent">관리자</a>
+                        }
+                        else
+                        {
+                            <a href="/welcome" class="site-nav-link site-nav-link-accent">행사 입장</a>
+                        }
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/login" class="site-nav-link site-nav-link-accent">로그인</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </nav>
+        </div>
+    </header>
+
+    <main class="site-main">
+        @Body
+    </main>
+
+    <footer class="site-footer">
+        <div class="site-footer-inner">
+            <div class="site-footer-brand">
+                <span class="site-logo-mark">SB</span>
+                <div>
+                    <strong>slow blossom</strong>
+                    <p>프리미엄 로테이션 소개팅 · 이벤트 기획</p>
+                </div>
+            </div>
+            <div class="site-footer-links">
+                <a href="/#about">회사소개</a>
+                <a href="/#business">사업분야</a>
+                <a href="/login">행사 로그인</a>
+                <a href="https://pf.kakao.com/_cxcUFb" target="_blank" rel="noopener noreferrer">카카오 채널</a>
+            </div>
+            <p class="site-footer-copy">© @DateTime.Now.Year slow blossom. All rights reserved.</p>
+        </div>
+    </footer>
+</div>
+
+<div id="blazor-error-ui">
+    오류가 발생했습니다.
+    <a href="" class="reload">새로고침</a>
+    <a class="dismiss">🗙</a>
+</div>
