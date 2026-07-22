@@ -23,7 +23,7 @@ public sealed class MailNotificationEffectiveSettings
     public int PollIntervalSeconds { get; set; } = 60;
     public NaverImapOptions NaverImap { get; set; } = new();
     public TelegramOptions Telegram { get; set; } = new();
-    public bool EnabledLockedByEnv { get; set; }
+    public bool EnabledOverriddenByEnv { get; set; }
     public bool UsernameLockedByEnv { get; set; }
     public bool PasswordLockedByEnv { get; set; }
     public bool SubjectLockedByEnv { get; set; }
@@ -105,7 +105,7 @@ public sealed class MailNotificationSettingsProvider
 
         var effective = new MailNotificationEffectiveSettings
         {
-            EnabledLockedByEnv = HasEnv("MAIL_NOTIFICATION_ENABLED"),
+            EnabledOverriddenByEnv = HasEnv("MAIL_NOTIFICATION_ENABLED"),
             UsernameLockedByEnv = HasEnv("NAVER_IMAP_USERNAME"),
             PasswordLockedByEnv = HasEnv("NAVER_IMAP_PASSWORD"),
             SubjectLockedByEnv = HasEnv("NAVER_IMAP_SUBJECT_CONTAINS"),
@@ -114,7 +114,7 @@ public sealed class MailNotificationSettingsProvider
             TelegramChatIdLockedByEnv = HasEnv("TELEGRAM_CHAT_ID")
         };
 
-        if (!effective.EnabledLockedByEnv)
+        if (!effective.EnabledOverriddenByEnv)
             options.Enabled = stored.Enabled;
 
         if (!effective.UsernameLockedByEnv && !string.IsNullOrWhiteSpace(stored.Username))

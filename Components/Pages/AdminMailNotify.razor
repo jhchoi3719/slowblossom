@@ -26,7 +26,7 @@
     <section class="card-section">
         <h2>현재 상태</h2>
         <ul class="status-list">
-            <li>기능 사용: @(_effective.Enabled ? "ON" : "OFF")</li>
+            <li>기능 사용: @(_effective.Enabled ? "ON" : "OFF")@(_effective.EnabledOverriddenByEnv ? " (환경변수 우선)" : "")</li>
             <li>네이버 IMAP: @(_imapConfigured ? "설정됨" : "미설정")</li>
             <li>텔레그램: @(_telegramConfigured ? "설정됨" : "미설정")</li>
             <li>확인 주기: @(_effective.PollIntervalSeconds)초</li>
@@ -44,28 +44,30 @@
         <p class="form-help">
             네이버 메일 <strong>POP3/IMAP 사용</strong>을 켜고, 2단계 인증 사용 시 <strong>애플리케이션 비밀번호</strong>를 입력하세요.
         </p>
-        @if (_effective.UsernameLockedByEnv || _effective.PasswordLockedByEnv || _effective.EnabledLockedByEnv)
+        @if (_effective.UsernameLockedByEnv || _effective.PasswordLockedByEnv || _effective.EnabledOverriddenByEnv)
         {
-            <p class="form-help">Render 환경변수로 일부 IMAP 값이 고정되어 있습니다. @(_effective.EnabledLockedByEnv ? "「신청 알림 사용」은 MAIL_NOTIFICATION_ENABLED 환경변수로만 변경할 수 있습니다." : "")</p>
+            <p class="form-help">
+                Render 환경변수로 일부 IMAP 값이 고정되어 있습니다.
+                @if (_effective.EnabledOverriddenByEnv)
+                {
+                    <span>실제 ON/OFF는 <strong>MAIL_NOTIFICATION_ENABLED</strong> 환경변수가 우선하지만, 아래 체크 상태는 저장됩니다.</span>
+                }
+            </p>
         }
 
         <form method="post" action="/admin/mail-notify/save" class="form-stack">
-            @if (_effective.EnabledLockedByEnv)
-            {
-                <input type="hidden" name="enabled" value="@(_effective.Enabled ? "true" : "false")" />
-                <label class="checkbox-label">
-                    <input type="checkbox" checked="@_effective.Enabled" disabled />
-                    신청 알림 사용 (환경변수로 고정)
-                </label>
-            }
-            else
-            {
-                <input type="hidden" name="enabled" value="false" />
-                <label class="checkbox-label">
-                    <input type="checkbox" name="enabled" value="true" @(_form.Enabled ? "checked" : null) />
-                    신청 알림 사용
-                </label>
-            }
+            <input type="hidden" name="enabled" value="false" />
+            <label class="checkbox-label">
+                @if (_form.Enabled)
+                {
+                    <input type="checkbox" name="enabled" value="true" checked="checked" />
+                }
+                else
+                {
+                    <input type="checkbox" name="enabled" value="true" />
+                }
+                신청 알림 사용
+            </label>
 
             <label class="form-field">
                 <span class="label">네이버 아이디</span>
@@ -192,7 +194,7 @@
             _form.TelegramChatId = _effective.Telegram.ChatId;
 
         if (Saved == "1")
-            _message = "IMAP 설정이 저장되었습니다.";
+            _message = $"IMAP 설정이 저장되었습니다. (신청 알림: {(_form.Enabled ? "ON" : "OFF")})";
         else if (SavedTelegram == "1")
             _message = "텔레그램 설정이 저장되었습니다.";
         else if (Sent == "1")

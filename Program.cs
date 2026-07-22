@@ -1190,7 +1190,7 @@ app.MapPost("/seating/initial/generate", async (
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapPost("/admin/mail-notify/save", async (
-    [FromForm] string? enabled,
+    HttpContext httpContext,
     [FromForm] string? username,
     [FromForm] string? password,
     [FromForm] string? subjectContains,
@@ -1209,7 +1209,7 @@ app.MapPost("/admin/mail-notify/save", async (
 
     await settingsProvider.SaveImapSettingsAsync(new MailNotificationStoredSettings
     {
-        Enabled = effective.EnabledLockedByEnv ? stored.Enabled : ParseFormBool(enabled),
+        Enabled = IsFormCheckboxChecked(httpContext.Request.Form, "enabled"),
         Username = resolvedUsername,
         SubjectContains = effective.SubjectLockedByEnv
             ? stored.SubjectContains
@@ -1351,9 +1351,10 @@ static bool? ParseOx(string? value) => value?.Trim().ToLowerInvariant() switch
     _ => null
 };
 
-static bool ParseFormBool(string? value) =>
-    value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .Any(part => string.Equals(part, "true", StringComparison.OrdinalIgnoreCase)) == true;
+static bool IsFormCheckboxChecked(IFormCollection form, string name) =>
+    form.TryGetValue(name, out var values)
+    && values.Count > 0
+    && values.Any(value => string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
 
 static async Task ReplaceAvailabilitiesAsync(
     AppDbContext db,
