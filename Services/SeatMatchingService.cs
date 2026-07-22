@@ -195,6 +195,9 @@ public class SeatMatchingService(
             .Where(a => a.EventId == eventId && a.IsConfirmed && (a.Gender == "남" || a.Gender == "여"))
             .ToListAsync(cancellationToken);
 
+        var evt = await db.Events.FindAsync([eventId], cancellationToken);
+        var referenceDate = evt?.EventDate.Date ?? DateTime.Today;
+
         var males = applications.Where(a => a.Gender == "남").ToList();
         var females = applications.Where(a => a.Gender == "여").ToList();
 
@@ -238,54 +241,63 @@ public class SeatMatchingService(
                     var votedForId = includeMidVotes ? voteByVoter.GetValueOrDefault(a.Id) : 0;
                     return ParticipantMatchProfile.FromApplication(
                         a,
+                        referenceDate,
                         votedForId,
                         votedForId > 0 ? nameById.GetValueOrDefault(votedForId) : null);
                 })
                 .ToList();
 
             var seatingContext = includeMidVotes ? "중간투표 기반 좌석 배치" : "행사 시작 전 초기 좌석 배치";
-            var aiPairs = await RequestGeminiPairsAsync(remainingMales, remainingFemales, profiles, seatingContext, cancellationToken)
-                ?? BuildFallbackPairs(remainingMales, remainingFemales, profiles);
+            var algorithmPairs = BuildFallbackPairs(remainingMales, remainingFemales, voteByVoter, referenceDate);
+            var aiPairs = await RequestGeminiPairsAsync(
+                remainingMales,
+                remainingFemales,
+                profiles,
+                referenceDate,
+                seatingContext,
+                cancellationToken);
 
-            foreach (var pair in aiPairs)
-            {
-                if (!availableMales.Remove(pair.MaleId) || !availableFemales.Remove(pair.FemaleId))
-                    continue;
+            var chosenPairs = ChooseBestPairs(
+                algorithmPairs,
+                aiPairs,
+                remainingMales,
+                remainingFemales,
+                referenceDate,
+                voteByVoter);
 
-                matches.Add(new ParticipantAiMatch
-                {
-                    EventId = eventId,
-                    VoteType = seatType,
-                    MaleApplicationId = pair.MaleId,
-                    FemaleApplicationId = pair.FemaleId,
-                    MatchSource = MatchSource.ProfileAi,
-                    Reason = pair.Reason
-                });
-            }
+            var appById = applications.ToDictionary(a => a.Id);
+
+            AddProfileAiPairs(
+                matches,
+                eventId,
+                seatType,
+                availableMales,
+                availableFemales,
+                appById,
+                voteByVoter,
+                nameById,
+                referenceDate,
+                chosenPairs.Select(p => (p.MaleId, p.FemaleId)));
         }
 
-        // Ensure every remaining confirmed participant is paired as long as both genders remain.
-        // This guarantees full pair coverage even when AI returns partial/invalid pairs.
-        var finalRemainingMales = availableMales.Values.OrderBy(m => m.Name).ToList();
-        var finalRemainingFemales = availableFemales.Values.OrderBy(f => f.Name).ToList();
-        var fallbackCount = Math.Min(finalRemainingMales.Count, finalRemainingFemales.Count);
-        for (var i = 0; i < fallbackCount; i++)
+        // AI/알고리즘 이후 남은 참가자도 호환성 점수 기준으로 매칭
+        if (availableMales.Count > 0 && availableFemales.Count > 0)
         {
-            var male = finalRemainingMales[i];
-            var female = finalRemainingFemales[i];
-
-            if (!availableMales.Remove(male.Id) || !availableFemales.Remove(female.Id))
-                continue;
-
-            matches.Add(new ParticipantAiMatch
-            {
-                EventId = eventId,
-                VoteType = seatType,
-                MaleApplicationId = male.Id,
-                FemaleApplicationId = female.Id,
-                MatchSource = MatchSource.ProfileAi,
-                Reason = $"{male.Name}님과 {female.Name}님을 남은 참가자 기준으로 자동 보정 매칭했습니다."
-            });
+            AddProfileAiPairs(
+                matches,
+                eventId,
+                seatType,
+                availableMales,
+                availableFemales,
+                applications.ToDictionary(a => a.Id),
+                voteByVoter,
+                nameById,
+                referenceDate,
+                MatchCompatibilityHelper.PairByCompatibility(
+                    availableMales.Values.ToList(),
+                    availableFemales.Values.ToList(),
+                    referenceDate,
+                    voteByVoter));
         }
 
         var existing = await db.AiMatches
@@ -478,6 +490,7 @@ public class SeatMatchingService(
         List<ParticipantApplication> males,
         List<ParticipantApplication> females,
         List<ParticipantMatchProfile> profiles,
+        DateTime referenceDate,
         string seatingContext,
         CancellationToken cancellationToken)
     {
@@ -490,23 +503,23 @@ public class SeatMatchingService(
         var model = configuration["Gemini:Model"] ?? "gemini-2.0-flash";
         var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
         var pairCount = Math.Min(males.Count, females.Count);
+        var eventDateLabel = referenceDate.ToString("yyyy-MM-dd");
 
         var profileJson = JsonSerializer.Serialize(profiles, JsonOptions);
         var malesJson = JsonSerializer.Serialize(males.Select(m => new { m.Id, m.Name }), JsonOptions);
         var femalesJson = JsonSerializer.Serialize(females.Select(f => new { f.Id, f.Name }), JsonOptions);
 
         var prompt = $"""
-            로테이션 소개팅 행사의 {seatingContext}입니다.
-            남녀 1:1로 매칭하세요. 참가자 신상정보(이름, 생년월일, 거주지, 직장, 선호 나이대, 관심사, 음주, 흡연, 연락 허용, 투표 선택)를 모두 고려해
-            가장 잘 어울리는 {pairCount}쌍을 만드세요.
+            로테이션 소개팅 행사의 {seatingContext}입니다. 행사 기준일은 {eventDateLabel}입니다.
+            남녀 1:1로 매칭하세요. participants JSON의 ageAtEvent(만 나이)와 preferredAgeRange를 반드시 확인하세요.
 
             규칙:
             - 남성 id는 males 목록, 여성 id는 females 목록에 있는 값만 사용
             - 한 사람은 최대 한 번만 매칭
             - 정확히 {pairCount}쌍 반환
-            - reason은 한국어 2~4문장으로 작성
-            - 반드시 두 사람의 실제 신상정보 값(관심사, 거주지, 직장, 선호 나이대, 생년월일, 음주, 흡연, 연락 허용, 투표 선택 등)을 구체적으로 인용하며 왜 잘 맞는지 상세히 설명
-            - "신상정보 기준으로 매칭"처럼 뭉뚱그린 표현만 쓰지 말 것
+            - 선호 연령대가 있는 경우, 상대방 ageAtEvent가 그 범위에 들어가는 조합을 우선
+            - 선호 연령대와 맞지 않는 사람끼리는 가급적 매칭하지 말 것
+            - reason 필드는 빈 문자열 "" 로 두어도 됨 (서버에서 다시 작성함)
             - JSON만 반환하고 pairs 배열에 maleId, femaleId, reason 필드를 포함
 
             males: {malesJson}
@@ -565,193 +578,132 @@ public class SeatMatchingService(
         }
     }
 
+    private static void AddProfileAiPairs(
+        List<ParticipantAiMatch> matches,
+        int eventId,
+        VoteType seatType,
+        Dictionary<int, ParticipantApplication> availableMales,
+        Dictionary<int, ParticipantApplication> availableFemales,
+        Dictionary<int, ParticipantApplication> appById,
+        Dictionary<int, int> voteByVoter,
+        Dictionary<int, string> nameById,
+        DateTime referenceDate,
+        IEnumerable<(int MaleId, int FemaleId)> pairs)
+    {
+        foreach (var (maleId, femaleId) in pairs)
+        {
+            if (!availableMales.Remove(maleId) || !availableFemales.Remove(femaleId))
+                continue;
+
+            if (!appById.TryGetValue(maleId, out var maleApp)
+                || !appById.TryGetValue(femaleId, out var femaleApp))
+                continue;
+
+            var maleVoteTarget = voteByVoter.GetValueOrDefault(maleId);
+            var femaleVoteTarget = voteByVoter.GetValueOrDefault(femaleId);
+
+            matches.Add(new ParticipantAiMatch
+            {
+                EventId = eventId,
+                VoteType = seatType,
+                MaleApplicationId = maleId,
+                FemaleApplicationId = femaleId,
+                MatchSource = MatchSource.ProfileAi,
+                Reason = MatchCompatibilityHelper.BuildMatchReason(
+                    maleApp,
+                    femaleApp,
+                    referenceDate,
+                    maleVoteTarget,
+                    femaleVoteTarget,
+                    maleVoteTarget > 0 ? nameById.GetValueOrDefault(maleVoteTarget) : null,
+                    femaleVoteTarget > 0 ? nameById.GetValueOrDefault(femaleVoteTarget) : null)
+            });
+        }
+    }
+
     private static List<AiPairResult> BuildFallbackPairs(
         List<ParticipantApplication> males,
         List<ParticipantApplication> females,
-        List<ParticipantMatchProfile> profiles)
-    {
-        var profileById = profiles.ToDictionary(p => p.Id);
-        var scores = new List<(int MaleId, int FemaleId, int Score)>();
-
-        foreach (var male in males)
-        {
-            foreach (var female in females)
+        Dictionary<int, int> voteByVoter,
+        DateTime referenceDate) =>
+        MatchCompatibilityHelper.PairByCompatibility(males, females, referenceDate, voteByVoter)
+            .Select(pair => new AiPairResult
             {
-                scores.Add((male.Id, female.Id, ComputeCompatibilityScore(
-                    profileById.GetValueOrDefault(male.Id),
-                    profileById.GetValueOrDefault(female.Id))));
-            }
-        }
+                MaleId = pair.MaleId,
+                FemaleId = pair.FemaleId
+            })
+            .ToList();
 
-        var usedMales = new HashSet<int>();
-        var usedFemales = new HashSet<int>();
-        var pairs = new List<AiPairResult>();
+    private static List<AiPairResult> ChooseBestPairs(
+        List<AiPairResult> algorithmPairs,
+        List<AiPairResult>? aiPairs,
+        List<ParticipantApplication> males,
+        List<ParticipantApplication> females,
+        DateTime referenceDate,
+        Dictionary<int, int> voteByVoter)
+    {
+        var expectedCount = Math.Min(males.Count, females.Count);
+        if (aiPairs is null || !IsValidPairSet(aiPairs, males, females, expectedCount))
+            return algorithmPairs;
 
-        foreach (var (maleId, femaleId, _) in scores.OrderByDescending(s => s.Score))
-        {
-            if (!usedMales.Add(maleId) || !usedFemales.Add(femaleId))
-                continue;
+        var maleById = males.ToDictionary(m => m.Id);
+        var femaleById = females.ToDictionary(f => f.Id);
 
-            var maleProfile = profileById.GetValueOrDefault(maleId);
-            var femaleProfile = profileById.GetValueOrDefault(femaleId);
+        var algorithmScore = SumPairScores(algorithmPairs, maleById, femaleById, referenceDate, voteByVoter);
+        var aiScore = SumPairScores(aiPairs, maleById, femaleById, referenceDate, voteByVoter);
 
-            pairs.Add(new AiPairResult
-            {
-                MaleId = maleId,
-                FemaleId = femaleId,
-                Reason = BuildDetailedMatchReason(maleProfile, femaleProfile)
-            });
-
-            if (pairs.Count >= Math.Min(males.Count, females.Count))
-                break;
-        }
-
-        return pairs;
+        return aiScore > algorithmScore ? aiPairs : algorithmPairs;
     }
 
-    private static string BuildDetailedMatchReason(ParticipantMatchProfile? male, ParticipantMatchProfile? female)
+    private static bool IsValidPairSet(
+        List<AiPairResult> pairs,
+        List<ParticipantApplication> males,
+        List<ParticipantApplication> females,
+        int expectedCount)
     {
-        if (male is null || female is null)
-            return "등록된 신상정보를 비교해 가장 적합한 조합으로 배치했습니다.";
-
-        var reasons = new List<string>();
-
-        if (male.VotedForId == female.Id)
-            reasons.Add($"{male.Name}님이 중간투표에서 {female.Name}님을 선택했으나 상대방 선택과 맞지 않았습니다");
-        else if (female.VotedForId == male.Id)
-            reasons.Add($"{female.Name}님이 중간투표에서 {male.Name}님을 선택했으나 상대방 선택과 맞지 않았습니다");
-        else if (!string.IsNullOrWhiteSpace(male.VotedForName) || !string.IsNullOrWhiteSpace(female.VotedForName))
-        {
-            var voteNote = new List<string>();
-            if (!string.IsNullOrWhiteSpace(male.VotedForName))
-                voteNote.Add($"{male.Name}님은 {male.VotedForName}님을 선택");
-            if (!string.IsNullOrWhiteSpace(female.VotedForName))
-                voteNote.Add($"{female.Name}님은 {female.VotedForName}님을 선택");
-            reasons.Add(string.Join(", ", voteNote) + "했으나 서로 맞지 않아 신상정보를 우선 반영했습니다");
-        }
-
-        var commonInterests = GetOverlappingTokens(male.Interests, female.Interests);
-        if (commonInterests.Count > 0)
-            reasons.Add($"관심사가 '{string.Join(", ", commonInterests)}'로 겹칩니다");
-        else if (!string.IsNullOrWhiteSpace(male.Interests) && !string.IsNullOrWhiteSpace(female.Interests))
-            reasons.Add($"관심사를 고려했습니다({male.Name}님: {male.Interests} · {female.Name}님: {female.Interests})");
-
-        if (HasSignificantOverlap(male.Residence, female.Residence))
-            reasons.Add($"거주지가 '{FormatPairValue(male.Residence, female.Residence)}'로 가깝습니다");
-        else if (!string.IsNullOrWhiteSpace(male.Residence) && !string.IsNullOrWhiteSpace(female.Residence))
-            reasons.Add($"거주지를 고려했습니다({male.Residence} · {female.Residence})");
-
-        if (HasSignificantOverlap(male.Workplace, female.Workplace))
-            reasons.Add($"직장/업종이 '{FormatPairValue(male.Workplace, female.Workplace)}'로 유사합니다");
-        else if (!string.IsNullOrWhiteSpace(male.Workplace) || !string.IsNullOrWhiteSpace(female.Workplace))
-            reasons.Add($"직장 정보를 고려했습니다({ValueOrDash(male.Workplace)} · {ValueOrDash(female.Workplace)})");
-
-        if (!string.IsNullOrWhiteSpace(male.PreferredAgeRange) && !string.IsNullOrWhiteSpace(female.BirthDate))
-            reasons.Add($"{male.Name}님의 선호 연령대({male.PreferredAgeRange})와 {female.Name}님의 생년월일({female.BirthDate})이 맞습니다");
-
-        if (!string.IsNullOrWhiteSpace(female.PreferredAgeRange) && !string.IsNullOrWhiteSpace(male.BirthDate))
-            reasons.Add($"{female.Name}님의 선호 연령대({female.PreferredAgeRange})와 {male.Name}님의 생년월일({male.BirthDate})이 맞습니다");
-
-        if (male.Drinking == female.Drinking && male.Drinking is "O" or "X")
-            reasons.Add($"음주 성향이 둘 다 {male.Drinking}입니다");
-
-        if (male.Smoking == female.Smoking && male.Smoking is "O" or "X")
-            reasons.Add($"흡연 성향이 둘 다 {male.Smoking}입니다");
-
-        if (male.AllowContact == "O" && female.AllowContact == "O")
-            reasons.Add("둘 다 연락 허용 의사가 있습니다");
-
-        if (reasons.Count == 0)
-        {
-            var profileHints = new List<string>();
-            if (!string.IsNullOrWhiteSpace(male.Interests))
-                profileHints.Add($"{male.Name}님 관심사 {male.Interests}");
-            if (!string.IsNullOrWhiteSpace(female.Interests))
-                profileHints.Add($"{female.Name}님 관심사 {female.Interests}");
-            if (!string.IsNullOrWhiteSpace(male.Residence))
-                profileHints.Add($"{male.Name}님 거주 {male.Residence}");
-            if (!string.IsNullOrWhiteSpace(female.Residence))
-                profileHints.Add($"{female.Name}님 거주 {female.Residence}");
-
-            if (profileHints.Count > 0)
-                return string.Join(", ", profileHints) + " 등을 종합해 가장 잘 맞는 조합으로 배치했습니다.";
-
-            return $"{male.Name}님과 {female.Name}님의 등록된 신상정보를 비교해 남녀 중 가장 궁합이 좋은 조합으로 배치했습니다.";
-        }
-
-        return string.Join(". ", reasons) + ".";
-    }
-
-    private static List<string> GetOverlappingTokens(string? left, string? right)
-    {
-        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
-            return [];
-
-        var leftTokens = Tokenize(left);
-        var rightTokens = Tokenize(right);
-        return leftTokens.Intersect(rightTokens).OrderBy(t => t).ToList();
-    }
-
-    private static bool HasSignificantOverlap(string? left, string? right)
-    {
-        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        if (pairs.Count != expectedCount)
             return false;
 
-        if (left.Trim().Equals(right.Trim(), StringComparison.OrdinalIgnoreCase))
-            return true;
+        var maleIds = males.Select(m => m.Id).ToHashSet();
+        var femaleIds = females.Select(f => f.Id).ToHashSet();
+        var usedMales = new HashSet<int>();
+        var usedFemales = new HashSet<int>();
 
-        return GetOverlappingTokens(left, right).Count > 0;
+        foreach (var pair in pairs)
+        {
+            if (!maleIds.Contains(pair.MaleId) || !femaleIds.Contains(pair.FemaleId))
+                return false;
+            if (!usedMales.Add(pair.MaleId) || !usedFemales.Add(pair.FemaleId))
+                return false;
+        }
+
+        return true;
     }
 
-    private static string FormatPairValue(string? left, string? right) =>
-        left?.Trim().Equals(right?.Trim(), StringComparison.OrdinalIgnoreCase) == true
-            ? left!.Trim()
-            : $"{left?.Trim()} · {right?.Trim()}";
-
-    private static string ValueOrDash(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
-
-    private static int ComputeCompatibilityScore(ParticipantMatchProfile? male, ParticipantMatchProfile? female)
+    private static int SumPairScores(
+        List<AiPairResult> pairs,
+        Dictionary<int, ParticipantApplication> maleById,
+        Dictionary<int, ParticipantApplication> femaleById,
+        DateTime referenceDate,
+        Dictionary<int, int> voteByVoter)
     {
-        if (male is null || female is null)
-            return 0;
+        var total = 0;
+        foreach (var pair in pairs)
+        {
+            if (!maleById.TryGetValue(pair.MaleId, out var male)
+                || !femaleById.TryGetValue(pair.FemaleId, out var female))
+                continue;
 
-        var score = 0;
+            total += MatchCompatibilityHelper.ComputeCompatibilityScore(
+                male,
+                female,
+                referenceDate,
+                voteByVoter.GetValueOrDefault(pair.MaleId),
+                voteByVoter.GetValueOrDefault(pair.FemaleId));
+        }
 
-        if (male.VotedForId == female.Id || female.VotedForId == male.Id)
-            score += 30;
-
-        score += TextOverlapScore(male.Interests, female.Interests) * 4;
-        score += TextOverlapScore(male.Residence, female.Residence) * 3;
-        score += TextOverlapScore(male.Workplace, female.Workplace) * 2;
-        score += TextOverlapScore(male.PreferredAgeRange, female.BirthDate) * 2;
-        score += TextOverlapScore(female.PreferredAgeRange, male.BirthDate) * 2;
-
-        if (male.Drinking == female.Drinking && male.Drinking is not null)
-            score += 2;
-        if (male.Smoking == female.Smoking && male.Smoking is not null)
-            score += 2;
-        if (male.AllowContact == "O" && female.AllowContact == "O")
-            score += 3;
-
-        return score;
+        return total;
     }
-
-    private static int TextOverlapScore(string? left, string? right)
-    {
-        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
-            return 0;
-
-        var leftTokens = Tokenize(left);
-        var rightTokens = Tokenize(right);
-        return leftTokens.Count(t => rightTokens.Contains(t));
-    }
-
-    private static HashSet<string> Tokenize(string text) =>
-        text.Split([' ', ',', '·', '/', '|', '，', '、'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(t => t.ToLowerInvariant())
-            .Where(t => t.Length >= 2)
-            .ToHashSet();
 
     private static string ExtractJson(string content)
     {
@@ -803,17 +755,25 @@ public class SeatMatchingService(
         public string? AllowContact { get; set; }
         public int? VotedForId { get; set; }
         public string? VotedForName { get; set; }
+        public int? AgeAtEvent { get; set; }
 
         public static ParticipantMatchProfile FromApplication(
             ParticipantApplication app,
+            DateTime referenceDate,
             int votedForId = 0,
-            string? votedForName = null) =>
-            new()
+            string? votedForName = null)
+        {
+            int? ageAtEvent = null;
+            if (MatchCompatibilityHelper.TryGetAgeAt(app.BirthDate, referenceDate, out var age))
+                ageAtEvent = age;
+
+            return new ParticipantMatchProfile
             {
                 Id = app.Id,
                 Name = app.Name,
                 Gender = app.Gender ?? "",
                 BirthDate = app.BirthDate,
+                AgeAtEvent = ageAtEvent,
                 Residence = app.Residence,
                 Workplace = app.Workplace,
                 PreferredAgeRange = app.PreferredAgeRange,
@@ -824,5 +784,6 @@ public class SeatMatchingService(
                 VotedForId = votedForId > 0 ? votedForId : null,
                 VotedForName = votedForName
             };
+        }
     }
 }
