@@ -46,17 +46,33 @@
         </p>
         @if (_effective.UsernameLockedByEnv || _effective.PasswordLockedByEnv || _effective.EnabledLockedByEnv)
         {
-            <p class="form-help">Render 환경변수로 일부 IMAP 값이 고정되어 있습니다.</p>
+            <p class="form-help">Render 환경변수로 일부 IMAP 값이 고정되어 있습니다. @(_effective.EnabledLockedByEnv ? "「신청 알림 사용」은 MAIL_NOTIFICATION_ENABLED 환경변수로만 변경할 수 있습니다." : "")</p>
         }
 
         <form method="post" action="/admin/mail-notify/save" class="form-stack">
-            <label class="checkbox-label">
-                <input type="checkbox" name="enabled" value="true" checked="@_form.Enabled" disabled="@_effective.EnabledLockedByEnv" />
-                신청 알림 사용
-            </label>
+            @if (_effective.EnabledLockedByEnv)
+            {
+                <input type="hidden" name="enabled" value="@(_effective.Enabled ? "true" : "false")" />
+                <label class="checkbox-label">
+                    <input type="checkbox" checked="@_effective.Enabled" disabled />
+                    신청 알림 사용 (환경변수로 고정)
+                </label>
+            }
+            else
+            {
+                <input type="hidden" name="enabled" value="false" />
+                <label class="checkbox-label">
+                    <input type="checkbox" name="enabled" value="true" @(_form.Enabled ? "checked" : null) />
+                    신청 알림 사용
+                </label>
+            }
 
             <label class="form-field">
                 <span class="label">네이버 아이디</span>
+                @if (_effective.UsernameLockedByEnv)
+                {
+                    <input type="hidden" name="username" value="@_effective.NaverImap.Username" />
+                }
                 <input type="text" name="username" class="input" value="@_form.Username" required disabled="@_effective.UsernameLockedByEnv" />
             </label>
 
@@ -67,12 +83,20 @@
 
             <label class="form-field">
                 <span class="label">메일 제목 필터</span>
+                @if (_effective.SubjectLockedByEnv)
+                {
+                    <input type="hidden" name="subjectContains" value="@_effective.NaverImap.SubjectContains" />
+                }
                 <input type="text" name="subjectContains" class="input" value="@_form.SubjectContains" disabled="@_effective.SubjectLockedByEnv" />
                 <span class="form-help">제목에 이 문구가 포함된 메일만 알림 (예: 네이버폼)</span>
             </label>
 
             <label class="form-field">
                 <span class="label">발신자 필터 (선택)</span>
+                @if (_effective.FromFilterLockedByEnv)
+                {
+                    <input type="hidden" name="fromFilter" value="@_effective.NaverImap.FromFilter" />
+                }
                 <input type="text" name="fromFilter" class="input" value="@_form.FromFilter" disabled="@_effective.FromFilterLockedByEnv" placeholder="예: naver.com" />
             </label>
 

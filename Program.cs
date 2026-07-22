@@ -1190,7 +1190,7 @@ app.MapPost("/seating/initial/generate", async (
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapPost("/admin/mail-notify/save", async (
-    [FromForm] bool enabled,
+    [FromForm] string? enabled,
     [FromForm] string? username,
     [FromForm] string? password,
     [FromForm] string? subjectContains,
@@ -1198,17 +1198,27 @@ app.MapPost("/admin/mail-notify/save", async (
     [FromForm] int pollIntervalSeconds,
     MailNotificationSettingsProvider settingsProvider) =>
 {
-    if (string.IsNullOrWhiteSpace(username))
+    var stored = await settingsProvider.GetStoredSettingsAsync();
+    var effective = await settingsProvider.GetEffectiveSettingsAsync();
+    var resolvedUsername = effective.UsernameLockedByEnv
+        ? stored.Username
+        : username?.Trim() ?? "";
+
+    if (string.IsNullOrWhiteSpace(resolvedUsername))
         return Results.Redirect("/admin/mail-notify?error=save");
 
     await settingsProvider.SaveImapSettingsAsync(new MailNotificationStoredSettings
     {
-        Enabled = enabled,
-        Username = username,
-        SubjectContains = subjectContains,
-        FromFilter = fromFilter,
+        Enabled = effective.EnabledLockedByEnv ? stored.Enabled : ParseFormBool(enabled),
+        Username = resolvedUsername,
+        SubjectContains = effective.SubjectLockedByEnv
+            ? stored.SubjectContains
+            : subjectContains,
+        FromFilter = effective.FromFilterLockedByEnv
+            ? stored.FromFilter
+            : fromFilter,
         PollIntervalSeconds = pollIntervalSeconds
-    }, password);
+    }, effective.PasswordLockedByEnv ? null : password);
 
     return Results.Redirect("/admin/mail-notify?saved=1");
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
@@ -1340,6 +1350,10 @@ static bool? ParseOx(string? value) => value?.Trim().ToLowerInvariant() switch
     "false" or "x" => false,
     _ => null
 };
+
+static bool ParseFormBool(string? value) =>
+    value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Any(part => string.Equals(part, "true", StringComparison.OrdinalIgnoreCase)) == true;
 
 static async Task ReplaceAvailabilitiesAsync(
     AppDbContext db,

@@ -5,6 +5,7 @@ namespace RotationDating.Web.Services.MailNotification;
 public sealed class MailNotificationState
 {
     public uint LastUid { get; set; }
+    public uint? UidValidity { get; set; }
     public string Folder { get; set; } = "INBOX";
     public DateTime? LastCheckedAtUtc { get; set; }
     public DateTime? LastNotifiedAtUtc { get; set; }

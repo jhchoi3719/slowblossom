@@ -52,24 +52,23 @@ public sealed class NaverImapMailMonitor
         var folder = await client.GetFolderAsync(imap.Folder, cancellationToken);
         await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
 
-        if (!string.Equals(state.Folder, imap.Folder, StringComparison.Ordinal))
-        {
-            state.Folder = imap.Folder;
-            state.LastUid = folder.UidNext?.Id > 1 ? folder.UidNext.Value.Id - 1 : 0;
-        }
+        SyncFolderBaseline(state, folder);
 
         if (state.LastUid == 0 && folder.Count > 0)
         {
-            state.LastUid = folder.Fetch(folder.Count - 1, folder.Count - 1, MessageSummaryItems.UniqueId).First().UniqueId.Id;
+            state.LastUid = GetHighestUid(folder);
             state.LastCheckedAtUtc = DateTime.UtcNow;
             await _stateStore.SaveAsync(state, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
-            _logger.LogInformation("Initialized mail monitor at UID {Uid}", state.LastUid);
+            _logger.LogInformation("Initialized mail monitor baseline at UID {Uid}", state.LastUid);
             return 0;
         }
 
         var query = SearchQuery.Uids(new UniqueIdRange(new UniqueId(state.LastUid + 1), UniqueId.MaxValue));
-        var uids = (await folder.SearchAsync(query, cancellationToken)).OrderBy(uid => uid.Id).ToList();
+        var uids = (await folder.SearchAsync(query, cancellationToken))
+            .Where(uid => uid.Id > state.LastUid)
+            .OrderBy(uid => uid.Id)
+            .ToList();
 
         foreach (var uid in uids)
         {
@@ -78,7 +77,7 @@ public sealed class NaverImapMailMonitor
             var message = await folder.GetMessageAsync(uid, cancellationToken);
             if (!MatchesFilter(message, imap))
             {
-                state.LastUid = Math.Max(state.LastUid, uid.Id);
+                state.LastUid = uid.Id;
                 continue;
             }
 
@@ -92,7 +91,7 @@ public sealed class NaverImapMailMonitor
                 _logger.LogInformation("Sent Telegram message for mail UID {Uid}: {Subject}", uid.Id, subject);
             }
 
-            state.LastUid = Math.Max(state.LastUid, uid.Id);
+            state.LastUid = uid.Id;
         }
 
         state.LastCheckedAtUtc = DateTime.UtcNow;
@@ -150,6 +149,7 @@ public sealed class NaverImapMailMonitor
         }
 
         var state = await _stateStore.LoadAsync(cancellationToken);
+        state.LastUid = Math.Max(state.LastUid, latest.UniqueId.Id);
         state.LastNotifiedAtUtc = DateTime.UtcNow;
         state.LastNotifiedSubject = subject;
         state.LastCheckedAtUtc = DateTime.UtcNow;
@@ -158,6 +158,31 @@ public sealed class NaverImapMailMonitor
 
         _logger.LogInformation("Manual check sent latest Naver Form mail: {Subject}", subject);
         return NotificationSendResult.Ok(subject);
+    }
+
+    private static void SyncFolderBaseline(MailNotificationState state, IMailFolder folder)
+    {
+        var uidValidity = folder.UidValidity;
+        var folderName = folder.FullName;
+
+        if (!string.Equals(state.Folder, folderName, StringComparison.Ordinal)
+            || state.UidValidity != uidValidity)
+        {
+            state.Folder = folderName;
+            state.UidValidity = uidValidity;
+            state.LastUid = folder.Count > 0 ? GetHighestUid(folder) : 0;
+        }
+    }
+
+    private static uint GetHighestUid(IMailFolder folder)
+    {
+        if (folder.UidNext is { Id: > 1 } uidNext)
+            return uidNext.Id - 1;
+
+        if (folder.Count == 0)
+            return 0;
+
+        return folder.Fetch(folder.Count - 1, folder.Count - 1, MessageSummaryItems.UniqueId).First().UniqueId.Id;
     }
 
     private static bool MatchesFilter(MimeMessage message, NaverImapOptions imapOptions)
