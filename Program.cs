@@ -274,7 +274,7 @@ app.MapGet("/force-logout", async (HttpContext context) =>
 app.MapPost("/logout", async (HttpContext context) =>
 {
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Redirect("/");
+    return Results.Redirect("/login");
 }).DisableAntiforgery();
 
 app.MapPost("/participants/delete", async ([FromForm] int participantId, [FromForm] int eventId, IDbContextFactory<AppDbContext> dbFactory) =>
