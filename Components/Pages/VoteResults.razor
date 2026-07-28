@@ -99,10 +99,18 @@
                     <div class="mutual-match-list">
                         @foreach (var match in group)
                         {
-                            <div class="mutual-match-card">
-                                <span class="mutual-person mutual-male">@match.Male!.Name <span class="mutual-gender">남</span></span>
-                                <span class="mutual-arrow">↔</span>
-                                <span class="mutual-person mutual-female">@match.Female!.Name <span class="mutual-gender">여</span></span>
+                            _voteGroupById.TryGetValue(match.MaleApplicationId, out var maleVotes);
+                            _voteGroupById.TryGetValue(match.FemaleApplicationId, out var femaleVotes);
+                            <div class="mutual-match-card mutual-match-card-final">
+                                <div class="mutual-match-pair">
+                                    <span class="mutual-person mutual-male">@match.Male!.Name <span class="mutual-gender">남</span></span>
+                                    <span class="mutual-arrow">↔</span>
+                                    <span class="mutual-person mutual-female">@match.Female!.Name <span class="mutual-gender">여</span></span>
+                                </div>
+                                <div class="mutual-match-votes">
+                                    @RenderFinalVoteRow(match.Male!.Name, maleVotes)
+                                    @RenderFinalVoteRow(match.Female!.Name, femaleVotes)
+                                </div>
                             </div>
                         }
                     </div>
@@ -208,6 +216,7 @@
     private List<Event> _events = [];
     private Event? _selectedEvent;
     private List<VoteResultGroup> _resultGroups = [];
+    private Dictionary<int, VoteResultGroup> _voteGroupById = [];
     private List<MutualMatch> _mutualMatches = [];
     private List<ParticipantAiMatch> _finalCouples = [];
     private Dictionary<int, int> _voteCountsByEvent = [];
@@ -264,6 +273,8 @@
 
         if (_selectedEvent is null) return;
 
+        _voteGroupById = [];
+
         if (_voteType == VoteType.Final)
             _finalCouples = await SeatMatching.GetFinalCoupleMatchingAsync(_selectedEvent.Id);
 
@@ -292,8 +303,7 @@
                 .GroupBy(v => v.VoterApplicationId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            _resultGroups = confirmedParticipants
-                .Where(p => !mutualParticipantIds.Contains(p.Id))
+            var allFinalGroups = confirmedParticipants
                 .Select(p =>
                 {
                     votesByVoter.TryGetValue(p.Id, out var voterVotes);
@@ -316,6 +326,9 @@
                     };
                 })
                 .ToList();
+
+            _voteGroupById = allFinalGroups.ToDictionary(g => g.VoterId);
+            _resultGroups = allFinalGroups;
         }
         else
         {
@@ -422,6 +435,36 @@
             return FormatTarget(choice);
         return "미선택";
     }
+
+    private RenderFragment RenderFinalVoteRow(string name, VoteResultGroup? group) => builder =>
+    {
+        var seq = 0;
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "mutual-match-vote-row");
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "vote-row-name");
+        builder.AddContent(seq++, name);
+        builder.CloseElement();
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "vote-row-priority");
+        builder.AddContent(seq++, "1순위 ");
+        builder.OpenElement(seq++, "strong");
+        builder.AddContent(seq++, group is null || !group.HasSubmitted
+            ? "미투표"
+            : FormatFinalPriority(group.FirstIsNone, group.FirstChoice));
+        builder.CloseElement();
+        builder.CloseElement();
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "vote-row-priority");
+        builder.AddContent(seq++, "2순위 ");
+        builder.OpenElement(seq++, "strong");
+        builder.AddContent(seq++, group is null || !group.HasSubmitted
+            ? "미투표"
+            : FormatFinalPriority(group.SecondIsNone, group.SecondChoice));
+        builder.CloseElement();
+        builder.CloseElement();
+        builder.CloseElement();
+    };
 
     private static string FormatVoteSummary(VoteResultGroup group)
     {
