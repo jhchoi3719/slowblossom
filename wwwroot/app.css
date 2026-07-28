@@ -1063,48 +1063,39 @@ html:has(.login-shell) body {
 }
 
 .mutual-match-card-final {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+    padding: 14px 16px;
 }
 
 .mutual-match-pair {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    gap: 12px;
+    gap: 16px;
 }
 
-.mutual-match-votes {
+.mutual-person-block {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-top: 8px;
-    border-top: 1px dashed #ffcc80;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.mutual-match-vote-row {
-    display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px 16px;
+    gap: 6px;
+    min-width: 0;
 }
 
-.mutual-match-vote-row .vote-row-name {
-    min-width: 4em;
-    font-weight: 700;
-    color: var(--text);
-}
-
-.mutual-match-vote-row .vote-row-priority {
+.mutual-person-votes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: 500;
     color: var(--text-muted);
+    line-height: 1.4;
 }
 
-.mutual-match-vote-row .vote-row-priority strong {
-    color: var(--text);
-    font-weight: 700;
+.mutual-match-card-final .mutual-arrow {
+    align-self: center;
+    margin-top: -18px;
 }
 
 .mutual-person {

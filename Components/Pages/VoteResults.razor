@@ -103,13 +103,21 @@
                             _voteGroupById.TryGetValue(match.FemaleApplicationId, out var femaleVotes);
                             <div class="mutual-match-card mutual-match-card-final">
                                 <div class="mutual-match-pair">
-                                    <span class="mutual-person mutual-male">@match.Male!.Name <span class="mutual-gender">남</span></span>
+                                    <div class="mutual-person-block mutual-male">
+                                        <span class="mutual-person">@match.Male!.Name <span class="mutual-gender">남</span></span>
+                                        <div class="mutual-person-votes">
+                                            <span>1순위 @FormatMatchedPriority(maleVotes, 1)</span>
+                                            <span>2순위 @FormatMatchedPriority(maleVotes, 2)</span>
+                                        </div>
+                                    </div>
                                     <span class="mutual-arrow">↔</span>
-                                    <span class="mutual-person mutual-female">@match.Female!.Name <span class="mutual-gender">여</span></span>
-                                </div>
-                                <div class="mutual-match-votes">
-                                    @RenderFinalVoteRow(match.Male!.Name, maleVotes)
-                                    @RenderFinalVoteRow(match.Female!.Name, femaleVotes)
+                                    <div class="mutual-person-block mutual-female">
+                                        <span class="mutual-person">@match.Female!.Name <span class="mutual-gender">여</span></span>
+                                        <div class="mutual-person-votes">
+                                            <span>1순위 @FormatMatchedPriority(femaleVotes, 1)</span>
+                                            <span>2순위 @FormatMatchedPriority(femaleVotes, 2)</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         }
@@ -328,7 +336,9 @@
                 .ToList();
 
             _voteGroupById = allFinalGroups.ToDictionary(g => g.VoterId);
-            _resultGroups = allFinalGroups;
+            _resultGroups = allFinalGroups
+                .Where(g => !mutualParticipantIds.Contains(g.VoterId))
+                .ToList();
         }
         else
         {
@@ -356,9 +366,10 @@
                 .ToList();
         }
 
-        var voters = _voteType == VoteType.Final
-            ? _resultGroups.Where(g => g.HasSubmitted).Select(g => g.VoterGender).ToList()
-            : votes.GroupBy(v => v.VoterApplicationId).Select(g => g.First().Voter!.Gender).ToList();
+        var voters = votes
+            .GroupBy(v => v.VoterApplicationId)
+            .Select(g => g.First().Voter!.Gender)
+            .ToList();
 
         _maleVoterCount = voters.Count(g => g == "남");
         _femaleVoterCount = voters.Count(g => g == "여");
@@ -436,35 +447,15 @@
         return "미선택";
     }
 
-    private RenderFragment RenderFinalVoteRow(string name, VoteResultGroup? group) => builder =>
+    private static string FormatMatchedPriority(VoteResultGroup? group, int priority)
     {
-        var seq = 0;
-        builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "mutual-match-vote-row");
-        builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "vote-row-name");
-        builder.AddContent(seq++, name);
-        builder.CloseElement();
-        builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "vote-row-priority");
-        builder.AddContent(seq++, "1순위 ");
-        builder.OpenElement(seq++, "strong");
-        builder.AddContent(seq++, group is null || !group.HasSubmitted
-            ? "미투표"
-            : FormatFinalPriority(group.FirstIsNone, group.FirstChoice));
-        builder.CloseElement();
-        builder.CloseElement();
-        builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "vote-row-priority");
-        builder.AddContent(seq++, "2순위 ");
-        builder.OpenElement(seq++, "strong");
-        builder.AddContent(seq++, group is null || !group.HasSubmitted
-            ? "미투표"
-            : FormatFinalPriority(group.SecondIsNone, group.SecondChoice));
-        builder.CloseElement();
-        builder.CloseElement();
-        builder.CloseElement();
-    };
+        if (group is null || !group.HasSubmitted)
+            return "미투표";
+
+        return priority == 1
+            ? FormatFinalPriority(group.FirstIsNone, group.FirstChoice)
+            : FormatFinalPriority(group.SecondIsNone, group.SecondChoice);
+    }
 
     private static string FormatVoteSummary(VoteResultGroup group)
     {
