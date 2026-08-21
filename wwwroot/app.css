@@ -1,16 +1,26 @@
 :root {
-    --primary: #e91e63;
-    --primary-dark: #c2185b;
-    --male: #2196f3;
-    --female: #e91e63;
-    --bg: #f5f5f5;
+    --primary: #e85a7a;
+    --primary-dark: #d44566;
+    --primary-soft: rgba(232, 90, 122, 0.12);
+    --male: #5b8fd6;
+    --male-soft: rgba(91, 143, 214, 0.12);
+    --female: #e85a7a;
+    --female-soft: rgba(232, 90, 122, 0.12);
+    --accent: #e85a7a;
+    --accent-soft: rgba(232, 90, 122, 0.12);
+    --bg: #faf6f7;
     --card: #ffffff;
-    --text: #333333;
-    --text-muted: #888888;
-    --border: #e0e0e0;
-    --danger: #f44336;
-    --radius: 12px;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --text: #2a2426;
+    --text-muted: #8f8589;
+    --border: #efe6e9;
+    --danger: #e56a4a;
+    --success: #5aab7a;
+    --warning: #f0a04b;
+    --radius: 18px;
+    --radius-sm: 14px;
+    --shadow: 0 2px 14px rgba(120, 60, 80, 0.06);
+    --shadow-sm: 0 1px 6px rgba(120, 60, 80, 0.04);
+    --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
 }
 
 * {
@@ -19,9 +29,12 @@
 
 body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    font-family: var(--font);
     background: var(--bg);
     color: var(--text);
+    letter-spacing: -0.015em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -40,36 +53,42 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
-    background: var(--card);
+    gap: 8px;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.92);
     border-bottom: 1px solid var(--border);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
     font-size: 13px;
 }
 
 .user-name {
-    font-weight: 600;
-    color: var(--primary);
+    font-weight: 700;
+    color: var(--text);
 }
 
 .admin-badge {
     margin-left: auto;
     margin-right: 8px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    background: #fce4ec;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff;
     color: var(--primary);
+    border: 1px solid var(--primary);
     font-size: 11px;
     font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
 .logout-btn {
-    background: #f5f5f5;
+    background: #fff;
     color: var(--text-muted);
+    border: 1px solid var(--border);
 }
 
 html:has(.login-shell),
 html:has(.login-shell) body {
-    background: #ffffff;
+    background: #faf6f7;
     min-height: 100%;
 }
 
@@ -79,7 +98,7 @@ html:has(.login-shell) body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #ffffff;
+    background: #faf6f7;
     padding:
         max(24px, env(safe-area-inset-top))
         max(20px, env(safe-area-inset-right))
@@ -95,9 +114,9 @@ html:has(.login-shell) body {
 .login-card {
     width: 100%;
     background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    border: 1px solid #f0f0f0;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
     overflow: hidden;
     text-align: center;
 }
@@ -291,9 +310,9 @@ html:has(.login-shell) body {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse at 20% 10%, rgba(233, 30, 99, 0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 90%, rgba(206, 147, 216, 0.18) 0%, transparent 50%),
-        linear-gradient(165deg, #fff8fb 0%, #ffffff 45%, #fdf2f8 100%);
+        radial-gradient(ellipse at 20% 0%, rgba(232, 90, 122, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 100%, rgba(255, 200, 180, 0.18) 0%, transparent 45%),
+        #faf6f7;
     z-index: 0;
 }
 
@@ -303,12 +322,12 @@ html:has(.login-shell) body {
     width: 100%;
     max-width: 400px;
     text-align: center;
-    padding: 32px 24px 28px;
-    background: rgba(255, 255, 255, 0.92);
-    border-radius: 24px;
-    box-shadow: 0 8px 32px rgba(233, 30, 99, 0.1);
-    border: 1px solid rgba(233, 30, 99, 0.08);
-    backdrop-filter: blur(8px);
+    padding: 36px 24px 30px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    backdrop-filter: none;
 }
 
 .welcome-logo-wrap {
@@ -334,24 +353,25 @@ html:has(.login-shell) body {
 
 .welcome-title {
     margin: 0;
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 800;
-    line-height: 1.45;
+    line-height: 1.35;
     color: var(--text);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.04em;
 }
 
 .welcome-divider {
     display: flex;
     justify-content: center;
-    margin: 24px 0;
+    margin: 22px 0;
 }
 
 .welcome-divider-dot {
-    width: 40px;
-    height: 3px;
-    border-radius: 3px;
-    background: linear-gradient(90deg, var(--primary), #ce93d8);
+    width: 24px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--primary);
+    opacity: 1;
 }
 
 .welcome-greeting {
@@ -372,9 +392,9 @@ html:has(.login-shell) body {
     gap: 6px;
     padding: 16px 18px;
     margin-bottom: 24px;
-    background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 100%);
+    background: #f2f2f7;
     border-radius: 14px;
-    border: 1px solid rgba(233, 30, 99, 0.12);
+    border: none;
 }
 
 .welcome-event-label {
@@ -488,13 +508,13 @@ html:has(.login-shell) body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 16px;
+    padding: 15px 16px;
     background: var(--card);
     border-radius: var(--radius);
-    border: 2px solid var(--border);
-    box-shadow: var(--shadow);
+    border: 0.5px solid var(--border);
+    box-shadow: none;
     cursor: pointer;
-    transition: border-color 0.15s;
+    transition: border-color 0.12s, background 0.12s;
 }
 
 .vote-card input[type="checkbox"],
@@ -521,17 +541,17 @@ html:has(.login-shell) body {
 
 .vote-card:has(input:checked) {
     border-color: var(--primary);
-    background: #fff5f8;
+    background: var(--primary-soft);
 }
 
 .vote-card.vote-male:has(input:checked) {
     border-color: var(--male);
-    background: #f3f9ff;
+    background: var(--male-soft);
 }
 
 .vote-card.vote-female:has(input:checked) {
     border-color: var(--female);
-    background: #fff5f8;
+    background: var(--female-soft);
 }
 
 .vote-card-body {
@@ -693,7 +713,11 @@ html:has(.login-shell) body {
 .menu-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    overflow: visible;
 }
 
 .menu-card {
@@ -703,28 +727,77 @@ html:has(.login-shell) body {
     padding: 18px 16px;
     background: var(--card);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-sm);
     text-decoration: none;
     color: var(--text);
     border: 1px solid var(--border);
-    transition: border-color 0.15s, transform 0.1s;
+    transition: background 0.12s, transform 0.1s;
+}
+
+.menu-card:last-child {
+    border-bottom: 1px solid var(--border);
 }
 
 .menu-card:active {
-    transform: scale(0.98);
-    border-color: var(--primary);
+    transform: scale(0.99);
+    background: #fafafa;
 }
 
 .menu-icon {
-    font-size: 28px;
+    display: none;
+}
+
+.menu-icon-badge {
     flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: #f7f8fa;
+    color: #555;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    border: none;
+}
+
+.menu-icon-badge .menu-svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.menu-icon-badge.tone-rose {
+    background: var(--female-soft);
+    color: var(--female);
+}
+
+.menu-icon-badge.tone-blue {
+    background: var(--male-soft);
+    color: var(--male);
+}
+
+.menu-icon-badge.tone-stone {
+    background: #f3f4f6;
+    color: #555;
+}
+
+.menu-icon-badge.tone-teal {
+    background: var(--primary-soft);
+    color: var(--primary);
 }
 
 .menu-text {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
 }
 
@@ -732,17 +805,21 @@ html:has(.login-shell) body {
     font-size: 16px;
     font-weight: 700;
     color: var(--text);
+    letter-spacing: -0.02em;
 }
 
 .menu-desc {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-muted);
+    line-height: 1.4;
 }
 
 .menu-arrow {
-    font-size: 22px;
-    color: var(--text-muted);
+    font-size: 20px;
+    color: #c8c8c8;
     flex-shrink: 0;
+    font-weight: 400;
+    line-height: 1;
 }
 
 .back-link {
@@ -755,7 +832,7 @@ html:has(.login-shell) body {
 }
 
 .application-card {
-    border-left-color: #ce93d8;
+    border-left-color: #a1a1aa;
     scroll-margin-top: 16px;
 }
 
@@ -870,8 +947,8 @@ html:has(.login-shell) body {
 
 .participant-tag.login-id-tag {
     font-weight: 600;
-    color: #3949ab;
-    background: #e8eaf6;
+    color: var(--male);
+    background: var(--male-soft);
 }
 
 .participant-tag.password-tag {
@@ -886,9 +963,11 @@ html:has(.login-shell) body {
     left: 0;
     right: 0;
     display: flex;
-    background: var(--card);
+    background: rgba(255, 255, 255, 0.96);
     border-top: 1px solid var(--border);
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    padding: 6px 4px calc(8px + env(safe-area-inset-bottom));
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
     z-index: 100;
 }
 
@@ -897,45 +976,73 @@ html:has(.login-shell) body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 3px;
     text-decoration: none;
-    color: var(--text-muted);
-    font-size: 11px;
-    padding: 4px;
+    color: #9a9a9a;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 6px 4px 4px;
+    border-radius: 12px;
+    transition: color 0.12s;
 }
 
 .nav-item.active {
-    color: var(--primary);
-    font-weight: 600;
+    color: var(--text);
+    font-weight: 700;
 }
 
-.nav-icon {
-    font-size: 20px;
+.nav-icon,
+.nav-icon-mark {
+    display: none;
+}
+
+.nav-svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.nav-item.active .nav-svg {
+    stroke: var(--primary);
+    color: var(--primary);
+}
+
+.nav-label {
+    line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
 .page {
     max-width: 640px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 20px 16px 28px;
 }
 
 .page-header h1 {
     margin: 0;
-    font-size: 22px;
-    color: var(--primary);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    line-height: 1.25;
 }
 
 .subtitle {
-    margin: 4px 0 16px;
+    margin: 8px 0 20px;
     font-size: 13px;
     color: var(--text-muted);
+    line-height: 1.45;
 }
 
 .date-tabs {
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding-bottom: 8px;
+    padding-bottom: 4px;
     margin-bottom: 16px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -951,22 +1058,29 @@ html:has(.login-shell) body {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 10px 16px;
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
     background: var(--card);
+    box-shadow: var(--shadow-sm);
     cursor: pointer;
     font-size: 13px;
     color: var(--text);
     text-decoration: none;
-    transition: border-color 0.15s, background 0.15s;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
 }
 
 .date-tab.active {
     border-color: var(--primary);
-    background: #fce4ec;
+    background: var(--primary-soft);
     color: var(--primary);
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: none;
+}
+
+.date-tab.active .tab-count {
+    color: var(--primary);
+    opacity: 0.8;
 }
 
 .date-tab.add-tab {
@@ -997,50 +1111,56 @@ html:has(.login-shell) body {
 }
 
 .summary-item {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 12px;
+    border: 0.5px solid transparent;
+    letter-spacing: -0.02em;
 }
 
 .summary-item.male {
-    background: #e3f2fd;
+    background: var(--male-soft);
     color: var(--male);
 }
 
 .summary-item.female {
-    background: #fce4ec;
+    background: var(--female-soft);
     color: var(--female);
 }
 
 .summary-item.total {
-    background: #f0f0f0;
+    background: #fff;
     color: var(--text);
+    border-color: var(--border);
 }
 
 .summary-item.mutual {
-    background: #fff3e0;
-    color: #e65100;
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
 }
 
 .mutual-match-section {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     padding: 16px;
-    background: linear-gradient(135deg, #fff8e1 0%, #fce4ec 100%);
+    background: var(--card);
     border-radius: var(--radius);
-    border: 2px solid #ffb74d;
-    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
 }
 
 .mutual-match-heading {
     margin: 0 0 4px;
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 800;
-    color: #e65100;
+    letter-spacing: -0.03em;
+    color: var(--text);
 }
 
 .mutual-match-desc {
     margin: 0 0 12px;
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-muted);
 }
 
@@ -1055,11 +1175,12 @@ html:has(.login-shell) body {
     align-items: center;
     justify-content: center;
     gap: 12px;
-    padding: 12px 16px;
-    background: var(--card);
-    border-radius: var(--radius);
-    border: 1px solid #ffcc80;
+    padding: 14px 16px;
+    background: #f7f7f8;
+    border-radius: 14px;
+    border: none;
     font-weight: 700;
+    box-shadow: none;
 }
 
 .mutual-match-card-final {
@@ -1122,7 +1243,7 @@ html:has(.login-shell) body {
 
 .mutual-priority-line.priority-matched .mutual-priority-label,
 .mutual-priority-line.priority-matched .mutual-priority-value {
-    color: #e65100;
+    color: var(--primary);
 }
 
 .mutual-priority-line.priority-matched .mutual-priority-value {
@@ -1138,7 +1259,7 @@ html:has(.login-shell) body {
 
 .mutual-priority-line.priority-matched .mutual-priority-value.priority-none,
 .mutual-priority-line.priority-matched .mutual-priority-value.priority-empty {
-    color: #e65100;
+    color: var(--primary);
     opacity: 0.7;
 }
 
@@ -1162,28 +1283,29 @@ html:has(.login-shell) body {
 }
 
 .mutual-male .mutual-gender {
-    background: #e3f2fd;
+    background: var(--male-soft);
     color: var(--male);
 }
 
 .mutual-female .mutual-gender {
-    background: #fce4ec;
+    background: var(--female-soft);
     color: var(--female);
 }
 
 .mutual-arrow {
-    font-size: 18px;
-    color: #e65100;
+    font-size: 16px;
+    color: #a1a1aa;
     flex-shrink: 0;
+    font-weight: 500;
 }
 
 .ai-match-section {
     margin-bottom: 20px;
     padding: 16px;
-    background: #f8f9ff;
+    background: #fafafa;
     border-radius: var(--radius);
-    border: 2px solid #c5cae9;
-    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    box-shadow: none;
 }
 
 .ai-match-header {
@@ -1196,9 +1318,10 @@ html:has(.login-shell) body {
 
 .ai-match-heading {
     margin: 0 0 4px;
-    font-size: 18px;
-    font-weight: 800;
-    color: #3949ab;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
 }
 
 .ai-match-desc {
@@ -1209,7 +1332,7 @@ html:has(.login-shell) body {
 }
 
 .ai-match-note {
-    color: #7986cb;
+    color: var(--text-muted);
     font-weight: 600;
 }
 
@@ -1226,8 +1349,8 @@ html:has(.login-shell) body {
 .ai-match-card {
     padding: 12px 16px;
     background: var(--card);
-    border-radius: var(--radius);
-    border: 1px solid #c5cae9;
+    border-radius: 12px;
+    border: 1px solid var(--border);
 }
 
 .ai-match-pair {
@@ -1257,7 +1380,7 @@ html:has(.login-shell) body {
 .ai-match-unmatched {
     margin: 12px 0 0;
     font-size: 13px;
-    color: #5c6bc0;
+    color: var(--text-muted);
 }
 
 .ai-match-error {
@@ -1270,11 +1393,12 @@ html:has(.login-shell) body {
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 16px;
-    padding: 12px 16px;
-    background: #e8eaf6;
+    padding: 14px 16px;
+    background: #fafafa;
     border-radius: var(--radius);
-    border: 1px solid #c5cae9;
-    font-size: 14px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 .seat-toolbar {
@@ -1447,13 +1571,15 @@ html:has(.login-shell) body {
 }
 
 .participant-tag.gender-tag-male {
-    background: #e3f2fd;
+    background: #fff;
     color: var(--male);
+    border: 1px solid var(--male);
 }
 
 .participant-tag.gender-tag-female {
-    background: #fce4ec;
+    background: #fff;
     color: var(--female);
+    border: 1px solid var(--female);
 }
 
 .confirm-row {
@@ -1701,51 +1827,68 @@ html:has(.login-shell) body {
 
 .login-id {
     font-weight: 700;
-    color: #3949ab;
+    color: var(--male);
 }
 
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 18px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
+    padding: 12px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     cursor: pointer;
-    background: #eeeeee;
+    background: #fff;
     color: var(--text);
-    transition: background 0.15s;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.12s, opacity 0.12s, border-color 0.12s;
 }
 
 .btn:active {
-    opacity: 0.85;
+    opacity: 0.88;
 }
 
 .btn-primary {
     background: var(--primary);
+    border-color: var(--primary);
     color: white;
+    box-shadow: none;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 
 .btn-secondary {
-    background: #eeeeee;
+    background: #fff;
+    border-color: var(--border);
+    color: var(--text);
 }
 
 .btn-sm {
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 7px 12px;
+    font-size: 13px;
+    border-radius: 10px;
+    box-shadow: none;
 }
 
 .btn-danger {
-    background: #ffebee;
+    background: #fff;
     color: var(--danger);
+    border-color: var(--danger);
+    box-shadow: none;
 }
 
 .card {
     background: var(--card);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
     padding: 16px;
     margin-bottom: 12px;
 }
@@ -1779,18 +1922,22 @@ html:has(.login-shell) body {
 }
 
 .input {
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 15px;
+    padding: 12px 14px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    font-family: var(--font);
+    font-weight: 500;
     color: var(--text);
     background: white;
     width: 100%;
+    letter-spacing: -0.01em;
 }
 
 .input:focus {
     outline: none;
     border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .textarea {
@@ -1827,9 +1974,10 @@ html:has(.login-shell) body {
 .participant-card {
     background: var(--card);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
-    border-left: 4px solid var(--border);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
 }
 
 .participant-card.card-male {
@@ -1852,20 +2000,24 @@ html:has(.login-shell) body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
+    min-width: 24px;
     height: 24px;
-    border-radius: 50%;
-    font-size: 12px;
+    padding: 0 7px;
+    border-radius: 8px;
+    font-size: 11px;
     font-weight: 700;
-    color: white;
 }
 
 .card-male .gender-badge {
-    background: var(--male);
+    background: #fff;
+    color: var(--male);
+    border: 1px solid var(--male);
 }
 
 .card-female .gender-badge {
-    background: var(--female);
+    background: #fff;
+    color: var(--female);
+    border: 1px solid var(--female);
 }
 
 .participant-name {
@@ -1880,20 +2032,23 @@ html:has(.login-shell) body {
 
 .status-badge {
     margin-left: auto;
-    padding: 2px 8px;
-    border-radius: 10px;
+    padding: 3px 9px;
+    border-radius: 999px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
+    background: #fff;
 }
 
 .status-applied {
-    background: #fff3e0;
-    color: #e65100;
+    background: #fff;
+    color: var(--warning);
+    border: 1px solid var(--warning);
 }
 
 .status-confirmed {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
 }
 
 .status-cancelled {
@@ -2009,38 +2164,82 @@ h1:focus {
 .venue-list {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
 }
 
 .venue-card {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 22px 18px;
+    gap: 14px;
+    padding: 18px;
     background: var(--card);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-sm);
     text-decoration: none;
     color: var(--text);
     border: 1px solid var(--border);
-    transition: border-color 0.15s, transform 0.1s;
+    transition: background 0.12s, transform 0.1s;
 }
 
 .venue-card:active {
-    transform: scale(0.98);
+    transform: scale(0.99);
+    background: #fafafa;
 }
 
 .venue-card.venue-uno {
-    border-color: #d7ccc8;
+    border-color: var(--border);
 }
 
 .venue-card.venue-suseong {
-    border-color: #c5cae9;
+    border-color: var(--border);
 }
 
 .venue-icon {
-    font-size: 36px;
+    display: none;
+}
+
+.venue-icon-badge {
     flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: #f7f8fa;
+    color: #555;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    border: none;
+}
+
+.venue-icon-badge .menu-svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.venue-card.venue-uno .venue-icon-badge,
+.venue-icon-badge.tone-stone {
+    background: #f3f4f6;
+    color: #555;
+}
+
+.venue-card.venue-suseong .venue-icon-badge,
+.venue-icon-badge.tone-blue {
+    background: var(--male-soft);
+    color: var(--male);
+}
+
+.venue-title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
 }
 
 .venue-text {
@@ -2050,11 +2249,6 @@ h1:focus {
     flex: 1;
 }
 
-.venue-title {
-    font-size: 18px;
-    font-weight: 700;
-}
-
 .venue-desc {
     font-size: 13px;
     color: var(--text-muted);
@@ -2062,7 +2256,7 @@ h1:focus {
 }
 
 .venue-card.venue-survey {
-    border-color: #f8bbd0;
+    border-color: var(--border);
 }
 
 .survey-shell .main-content {
@@ -3710,4 +3904,170 @@ html:has(.site-shell) body {
     .site-cta-actions .site-btn {
         width: 100%;
     }
+}
+
+/* ---- Modern palette overrides (legacy accent cleanup) ---- */
+.menu-list-spaced {
+    margin-top: 16px;
+}
+
+.alert-success {
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: 12px;
+    font-weight: 700;
+}
+
+.alert-info {
+    background: #fff;
+    color: var(--male);
+    border: 1px solid var(--male);
+    border-radius: 12px;
+    font-weight: 700;
+}
+
+.participant-tag.gender-tag-male,
+.card-male .gender-badge {
+    background: #fff;
+    color: var(--male);
+    border: 1px solid var(--male);
+}
+
+.participant-tag.gender-tag-female,
+.card-female .gender-badge {
+    background: #fff;
+    color: var(--female);
+    border: 1px solid var(--female);
+}
+
+.card-male .gender-badge,
+.card-female .gender-badge {
+    width: auto;
+    min-width: 24px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.status-applied,
+.summary-item.arrived,
+.status-pending {
+    background: #fff;
+    color: var(--warning);
+    border: 1px solid var(--warning);
+}
+
+.status-confirmed {
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.seat-ai-badge {
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.seat-card {
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+}
+
+.seat-card.seat-mutual,
+.seat-card.seat-ai {
+    border-color: var(--border);
+    background: #fff;
+}
+
+.seat-card.seat-male-vote {
+    border-color: var(--male);
+    background: #fff;
+}
+
+.seat-card.seat-female-vote {
+    border-color: var(--female);
+    background: #fff;
+}
+
+.seat-source-badge {
+    border-radius: 999px;
+    background: #fff;
+}
+
+.seat-source-badge.badge-mutual {
+    color: var(--warning);
+    border: 1px solid var(--warning);
+    background: #fff;
+}
+
+.seat-source-badge.badge-male {
+    color: var(--male);
+    border: 1px solid var(--male);
+    background: #fff;
+}
+
+.seat-source-badge.badge-female {
+    color: var(--female);
+    border: 1px solid var(--female);
+    background: #fff;
+}
+
+.seat-source-badge.badge-ai {
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    background: #fff;
+}
+
+.login-input,
+.input,
+.textarea,
+select.input {
+    border-radius: var(--radius-sm);
+    border-color: var(--border);
+    font-family: var(--font);
+}
+
+.back-link {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.back-link:hover {
+    color: var(--primary);
+}
+
+.main-content {
+    padding-bottom: 78px;
+}
+
+.ai-match-section,
+.seat-link-banner {
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+.mutual-arrow {
+    color: #c8c8c8;
+}
+
+.participant-name,
+.vote-name {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.vote-card {
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+}
+
+.vote-card:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-soft);
 }
