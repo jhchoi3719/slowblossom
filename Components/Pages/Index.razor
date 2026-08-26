@@ -1,166 +1,234 @@
 @page "/"
 @layout Layout.SiteLayout
 
-<PageTitle>slow blossom</PageTitle>
+<PageTitle>SSF 싱싱한팜</PageTitle>
 
-<section class="site-hero" id="top" aria-label="메인 비주얼">
-    <div class="site-hero-slider" data-site-hero-slider>
-        @foreach (var slide in _slides)
-        {
-            <article class="site-hero-slide @(slide == _slides[0] ? "is-active" : "")" data-site-hero-slide style="@($"--slide-accent:{slide.Accent}")">
-                <div class="site-hero-slide-bg" aria-hidden="true"></div>
-                <div class="site-hero-slide-content">
-                    <p class="site-hero-eyebrow">@slide.Eyebrow</p>
-                    <h1 class="site-hero-title">@((MarkupString)slide.Title.Replace("\n", "<br />"))</h1>
-                    <p class="site-hero-desc">@slide.Description</p>
-                </div>
-            </article>
-        }
+<section class="ssf-hero" id="top" aria-label="메인 비주얼">
+    <div class="ssf-hero-media" style="--hero-image:url('https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1800&q=80')"></div>
+    <div class="ssf-hero-overlay"></div>
+    <div class="ssf-hero-content">
+        <h1 class="ssf-hero-title">Green That Grows With You</h1>
+        <span class="ssf-hero-line" aria-hidden="true"></span>
+        <p class="ssf-hero-desc">식물의 에너지로,<br />당신을 새롭게 채워보세요</p>
     </div>
+</section>
 
-    <div class="site-hero-controls">
-        <button type="button" class="site-hero-control" data-site-hero-prev aria-label="이전 슬라이드">‹</button>
-        <div class="site-hero-dots" role="tablist" aria-label="슬라이드 선택">
-            @for (var i = 0; i < _slides.Count; i++)
+<section class="ssf-split-section" id="about">
+    <div class="ssf-container">
+        <h2 class="ssf-serif-heading">Bring Freshness Home</h2>
+        <div class="ssf-split-layout">
+            <div class="ssf-photo-pair">
+                <div class="ssf-photo" style="--photo:url('https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=700&q=80')" role="img" aria-label="공기정화식물"></div>
+                <div class="ssf-photo" style="--photo:url('https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=700&q=80')" role="img" aria-label="화분 연출"></div>
+            </div>
+            <div class="ssf-split-copy">
+                <h3>싱싱함으로 공기정화식물 선물하세요</h3>
+                <span class="ssf-accent-line" aria-hidden="true"></span>
+                <p>
+                    고객님을 대신하여 선물을 전달한다는 마음으로<br />
+                    싱싱한 식물로 보답드립니다.<br />
+                    리본문구 무료, 배송비 무료 (군, 산간지역에 따라 추가금 발생가능)
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="ssf-split-section ssf-split-alt">
+    <div class="ssf-container">
+        <h2 class="ssf-serif-heading">Bring the Holiday Magic to Your Space</h2>
+        <div class="ssf-split-layout ssf-split-reverse">
+            <div class="ssf-split-copy">
+                <h3>크리스마스 트리 설치, 대여</h3>
+                <span class="ssf-accent-line" aria-hidden="true"></span>
+                <p>
+                    모델하우스, 콘서트장, 박물관, 교육청, 시청, 의회, 구청, 호텔,<br />
+                    병원, 대형카페, 학원, 학교 등 다양한 곳에 크리스마스 트리 설치를 합니다.<br />
+                    구입 및 대여 가능합니다. 시즌 상품 미리 준비하세요!
+                </p>
+            </div>
+            <div class="ssf-photo-pair">
+                <div class="ssf-photo" style="--photo:url('https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=700&q=80')" role="img" aria-label="크리스마스 트리 연출"></div>
+                <div class="ssf-photo" style="--photo:url('https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=700&q=80')" role="img" aria-label="홀리데이 공간 연출"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="ssf-split-section">
+    <div class="ssf-container">
+        <h2 class="ssf-serif-heading">Plant styling that fits your space</h2>
+        <div class="ssf-split-layout">
+            <div class="ssf-photo-pair">
+                <div class="ssf-photo" style="--photo:url('https://images.unsplash.com/photo-1463320726281-696a485928c7?auto=format&fit=crop&w=700&q=80')" role="img" aria-label="플랜테리어 공간"></div>
+                <div class="ssf-photo" style="--photo:url('https://images.unsplash.com/photo-1459156212016-c812468e2115?auto=format&fit=crop&w=700&q=80')" role="img" aria-label="공간 조경 연출"></div>
+            </div>
+            <div class="ssf-split-copy">
+                <h3>공간에 맞는<br />플랜테리어 조경으로 안내드립니다</h3>
+                <span class="ssf-accent-line" aria-hidden="true"></span>
+                <p>
+                    현장 상담을 통해 원하시는 디자인에 대해 상의 후,<br />
+                    작업이 들어가게 됩니다. 공간에 맞는 조경으로 분위기를 바꿔보세요!
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="ssf-intro" id="home-intro">
+    <div class="ssf-container ssf-intro-inner">
+        <div class="ssf-intro-brand">
+            <span class="ssf-intro-en">SSF</span>
+            <span class="ssf-intro-ko">싱싱한 팜</span>
+        </div>
+        <p class="ssf-intro-notice">
+            수업문의는 카카오톡 '싱싱한팜' 채널을 이용해 주세요.<br />
+            수업시간에는 답변이 다소 지연될 수 있습니다.<br />
+            <span lang="en">For class inquiries, please use KakaoTalk or the homepage.<br />Replies may be delayed during class hours.</span>
+        </p>
+        <div class="ssf-intro-actions">
+            <a href="https://pf.kakao.com/_cxcUFb" class="ssf-btn ssf-btn-dark" target="_blank" rel="noopener noreferrer">
+                <svg class="ssf-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5c-4.6 0-8.3 2.9-8.3 6.5 0 2.3 1.5 4.3 3.8 5.5l-.9 3.3 3.7-2c.5.1 1.1.2 1.7.2 4.6 0 8.3-2.9 8.3-6.5S16.6 4.5 12 4.5Z" fill="currentColor" stroke="none"/></svg>
+                카카오톡
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="ssf-feature-cards">
+    <div class="ssf-container ssf-feature-grid">
+        <a href="https://smartstore.naver.com/" class="ssf-feature-card ssf-feature-store" target="_blank" rel="noopener noreferrer"
+           style="--card-image:url('https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?auto=format&fit=crop&w=900&q=80')">
+            <div class="ssf-feature-copy">
+                <p class="ssf-feature-eyebrow">싱싱한팜 네이버스마트스토어</p>
+                <h2 class="ssf-feature-title">Farm Store</h2>
+                <span class="ssf-pill">Smart Store</span>
+            </div>
+        </a>
+        <a href="https://pf.kakao.com/_cxcUFb" class="ssf-feature-card ssf-feature-class" target="_blank" rel="noopener noreferrer"
+           style="--card-image:url('https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=900&q=80')">
+            <div class="ssf-feature-copy">
+                <p class="ssf-feature-eyebrow">International Flower Stylist Association</p>
+                <h2 class="ssf-feature-title">Class &amp; Certification</h2>
+                <span class="ssf-pill">Applying for a class</span>
+            </div>
+        </a>
+    </div>
+</section>
+
+<section class="ssf-gallery" id="gallery">
+    <div class="ssf-container">
+        <div class="ssf-gallery-tabs" role="tablist" aria-label="갤러리 분류" data-ssf-gallery-tabs>
+            @foreach (var tab in _galleryTabs)
             {
-                var index = i;
                 <button type="button"
-                        class="site-hero-dot @(index == 0 ? "is-active" : "")"
-                        data-site-hero-dot="@index"
-                        role="tab"
-                        aria-label="@($"슬라이드 {index + 1}")"
-                        aria-selected="@(index == 0 ? "true" : "false")"></button>
+                        class="ssf-gallery-tab @(tab == _galleryTabs[0] ? "is-active" : "")"
+                        data-ssf-gallery-tab="@tab"
+                        role="tab">@tab</button>
             }
         </div>
-        <button type="button" class="site-hero-control" data-site-hero-next aria-label="다음 슬라이드">›</button>
-        <button type="button" class="site-hero-play" data-site-hero-play aria-label="슬라이드 일시정지" aria-pressed="false">⏸</button>
-    </div>
-
-    <a href="#about" class="site-hero-scroll">
-        <span>Scroll down</span>
-        <span class="site-hero-scroll-icon" aria-hidden="true"></span>
-    </a>
-</section>
-
-<section class="site-section site-section-intro" id="about">
-    <div class="site-container">
-        <p class="site-section-eyebrow">About slow blossom</p>
-        <h2 class="site-section-title">특별한 만남을<br class="site-br-mobile" /> 설계하는 브랜드</h2>
-        <p class="site-section-lead">
-            slow blossom은 로테이션 소개팅과 프라이빗 이벤트를 통해
-            진정성 있는 인연의 순간을 만들어 갑니다.
-            기획부터 현장 운영, 참가자 경험까지 전 과정을 직접 설계합니다.
-        </p>
-    </div>
-</section>
-
-<section class="site-section site-section-cards" id="business">
-    <div class="site-container">
-        <div class="site-section-head">
-            <p class="site-section-eyebrow">Business</p>
-            <h2 class="site-section-title">사업분야</h2>
-        </div>
-        <div class="site-card-grid">
-            @foreach (var card in _businessCards)
+        <div class="ssf-gallery-grid" data-ssf-gallery-grid>
+            @foreach (var item in _galleryItems)
             {
-                <article class="site-card">
-                    <span class="site-card-index">@card.Index</span>
-                    <h3 class="site-card-title">@card.Title</h3>
-                    <p class="site-card-desc">@card.Description</p>
-                    <a href="@card.Link"
-                       class="site-card-link"
-                       target="@(card.Link.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "_blank" : null)"
-                       rel="@(card.Link.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "noopener noreferrer" : null)">자세히 보기</a>
+                <article class="ssf-gallery-item" data-ssf-gallery-cat="@item.Category">
+                    <div class="ssf-gallery-thumb" style="--thumb:url('@item.ImageUrl')"></div>
+                    <p class="ssf-gallery-caption">@item.Caption</p>
                 </article>
             }
         </div>
     </div>
 </section>
 
-<section class="site-section site-section-dark" id="events">
-    <div class="site-container site-events-layout">
-        <div class="site-events-copy">
-            <p class="site-section-eyebrow site-section-eyebrow-light">Events</p>
-            <h2 class="site-section-title site-section-title-light">프리미엄 로테이션 소개팅</h2>
-            <p class="site-section-lead site-section-lead-light">
-                우노커피, 호텔수성스퀘어 등 검증된 공간에서 진행되는
-                slow blossom만의 로테이션 소개팅 프로그램.
-                참가자는 행사 당일 전용 앱으로 질문카드, 투표, 좌석 안내를 받습니다.
+<section class="ssf-about-profile">
+    <div class="ssf-container ssf-about-grid">
+        <div class="ssf-about-photo">
+            <img src="https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?auto=format&fit=crop&w=800&q=80" alt="싱싱한팜 공간과 꽃" />
+        </div>
+        <div class="ssf-about-copy">
+            <h2 class="ssf-serif-heading">About SSF</h2>
+            <p>
+                싱싱한팜은 꽃·식물·공간 연출과 원예 교육을 중심으로,
+                일상과 행사에 싱싱한 경험을 전합니다.
             </p>
-            <a href="/login" class="site-btn site-btn-light">행사 참가 로그인</a>
+            <ul class="ssf-about-list">
+                <li>온라인·오프라인 꽃·식물·제로웨이스트 수업 진행</li>
+                <li>연령·대상별 맞춤 수업 및 기업·복지 힐링 프로그램</li>
+                <li>화훼장식기능사 · 조경기능사</li>
+                <li>도시농업 · 힐링가든 · 치유농장 운영</li>
+            </ul>
         </div>
-        <ul class="site-feature-list">
-            <li>
-                <strong>1:1 로테이션</strong>
-                <span>AI 좌석 매칭과 현장 진행으로 효율적인 만남</span>
-            </li>
-            <li>
-                <strong>질문카드 · 투표</strong>
-                <span>대화를 돕는 콘텐츠와 중간·최종 선택 기능</span>
-            </li>
-            <li>
-                <strong>운영 대시보드</strong>
-                <span>신청서, 참가자, 결과를 한곳에서 관리</span>
-            </li>
-        </ul>
     </div>
 </section>
 
-<section class="site-section" id="news">
-    <div class="site-container">
-        <div class="site-section-head site-section-head-row">
-            <div>
-                <p class="site-section-eyebrow">News</p>
-                <h2 class="site-section-title">새로운 소식</h2>
-            </div>
-            <a href="https://pf.kakao.com/_cxcUFb" class="site-text-link" target="_blank" rel="noopener noreferrer">카카오 채널 보기</a>
-        </div>
-        <ul class="site-news-list">
-            @foreach (var item in _newsItems)
+<section class="ssf-faq" id="faq">
+    <div class="ssf-container">
+        <h2 class="ssf-serif-heading ssf-faq-heading">FAQ</h2>
+        <div class="ssf-faq-list" data-ssf-faq>
+            @foreach (var item in _faqItems)
             {
-                <li class="site-news-item">
-                    <time datetime="@item.DateIso">@item.DateLabel</time>
-                    <p>@item.Title</p>
-                </li>
+                <details class="ssf-faq-card">
+                    <summary>
+                        <span>@item.Question</span>
+                        <span class="ssf-faq-chevron" aria-hidden="true"></span>
+                    </summary>
+                    <div class="ssf-faq-body">
+                        @foreach (var line in item.Answer.Split('\n'))
+                        {
+                            <p>@line</p>
+                        }
+                    </div>
+                </details>
             }
-        </ul>
-    </div>
-</section>
-
-<section class="site-section site-section-cta" id="contact">
-    <div class="site-container site-cta-box">
-        <h2 class="site-section-title">slow blossom과 함께<br class="site-br-mobile" /> 특별한 만남을 시작하세요</h2>
-        <p class="site-section-lead">행사 문의, 제휴, 브랜드 협업은 카카오 채널로 연락해 주세요.</p>
-        <div class="site-cta-actions">
-            <a href="https://pf.kakao.com/_cxcUFb" class="site-btn site-btn-primary" target="_blank" rel="noopener noreferrer">카카오 채널 문의</a>
-            <a href="/login" class="site-btn site-btn-outline">행사 로그인</a>
+        </div>
+        <div class="ssf-faq-write">
+            <a href="https://pf.kakao.com/_cxcUFb" class="ssf-write-btn" target="_blank" rel="noopener noreferrer">문의하기</a>
         </div>
     </div>
 </section>
 
+<section class="ssf-event-banner">
+    <div class="ssf-container ssf-event-inner">
+        <p class="ssf-event-eyebrow">Event by SSF</p>
+        <h2 class="ssf-event-title">slow blossom</h2>
+        <p class="ssf-event-desc">
+            싱싱한팜에서 기획·운영하는 프리미엄 로테이션 소개팅 행사입니다.
+            우노커피, 호텔수성스퀘어 등에서 만나보세요.
+        </p>
+        <a href="/login" class="ssf-btn ssf-btn-outline-light">행사 참가 로그인</a>
+    </div>
+</section>
 @code {
-    private readonly IReadOnlyList<HeroSlide> _slides =
+    private readonly IReadOnlyList<string> _galleryTabs =
     [
-        new("Premium Experience", "새로운 인연,\nslow blossom", "프리미엄 로테이션 소개팅으로 설레는 만남의 시작을 함께합니다.", "#1e4f7a"),
-        new("Curated Events", "공간과 분위기가\n만드는 특별함", "카페, 호텔 라운지 등 감각적인 공간에서 진행되는 맞춤형 이벤트.", "#245c54"),
-        new("Community", "싱싱한팜과 함께\n지속되는 연결", "행사를 넘어 커뮤니티로 이어지는 slow blossom만의 경험.", "#3d4a7a")
+        "전체", "개업화분", "크리스마스 트리", "원예 프로그램", "행사", "조경"
     ];
 
-    private readonly IReadOnlyList<BusinessCard> _businessCards =
+    private readonly IReadOnlyList<GalleryItem> _galleryItems =
     [
-        new("01", "로테이션 소개팅", "1:1 로테이션 방식의 프리미엄 소개팅 프로그램을 기획·운영합니다.", "/login"),
-        new("02", "이벤트 기획 · 운영", "브랜드 맞춤형 데이팅·네트워킹 이벤트를 End-to-End로 제공합니다.", "/#contact"),
-        new("03", "커뮤니티 · 채널", "싱싱한팜 카카오 채널을 통해 소식과 참여 기회를 전달합니다.", "https://pf.kakao.com/_cxcUFb")
+        new("크리스마스 트리", "크리스마스 트리 영천여고 3M 트리", "https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=800&q=80"),
+        new("크리스마스 트리", "로비 트리 연출", "https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=800&q=80"),
+        new("개업화분", "개업·축하 화분 연출", "https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=800&q=80"),
+        new("원예 프로그램", "원예 클래스 현장", "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=800&q=80"),
+        new("행사", "slow blossom 로테이션 소개팅", "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80"),
+        new("조경", "공간 플랜테리어 조경", "https://images.unsplash.com/photo-1459156212016-c812468e2115?auto=format&fit=crop&w=800&q=80")
     ];
 
-    private readonly IReadOnlyList<NewsItem> _newsItems =
+    private readonly IReadOnlyList<FaqItem> _faqItems =
     [
-        new("2026-03-01", "2026. 03. 01", "slow blossom 공식 홈페이지를 새롭게 오픈했습니다."),
-        new("2026-02-15", "2026. 02. 15", "호텔수성스퀘어 로테이션 소개팅 일정 안내"),
-        new("2026-02-01", "2026. 02. 01", "우노커피 프리미엄 소개팅 프로그램 참가자 모집")
+        new(
+            "크리스마스트리 대여 문의는 언제부터 가능한가요?",
+            "크리스마스트리는 시즌 상품이기에 빠르게 설치하실수록 좋습니다.\n기업에서는 7-8월부터 미팅을 하셔서 10-11월에 설치를 하는 것을 추천드립니다."),
+        new(
+            "수업 공간은 어떻게 되나요?",
+            "모두 예약제로 진행이 되기 때문에 당일 사용은 어렵습니다.\n1. 중구 소재 : 대구 중구 태평로 160, 10층\n2. 수성구 소재 : 대구 수성구 달구벌대로 528길 15, 수성대학교 성요셉관 3층\n3. 달서구 소재 : 대구 달서구 중흥로 4길, 3층"),
+        new(
+            "출강 문의 드립니다. 예산에 맞춰 준비 가능할까요?",
+            "강사비가 없는 수업은 출강을 하지 않습니다.\n강사비와 재료비가 있는 수업만을 진행하며, 예산 내에 원예수업 가능한 목록으로 안내드립니다."),
+        new(
+            "조경 제안을 받고 싶어요. 현장에도 와주시나요?",
+            "조경은 현장 미팅 후, 견적을 보내드립니다.\n현장 미팅을 갈 때에 대표님이 원하시는 디자인이 있으시면 먼저 사진을 보여주시면 빠른 상담이 가능하며, 현장 미팅 상담비용은 발생합니다.")
     ];
 
-    private sealed record HeroSlide(string Eyebrow, string Title, string Description, string Accent);
-    private sealed record BusinessCard(string Index, string Title, string Description, string Link);
-    private sealed record NewsItem(string DateIso, string DateLabel, string Title);
+    private sealed record GalleryItem(string Category, string Caption, string ImageUrl);
+    private sealed record FaqItem(string Question, string Answer);
 }

@@ -4,64 +4,80 @@
 
 <div class="site-shell">
     <header class="site-header" id="site-header">
-        <div class="site-header-inner">
-            <a href="/" class="site-logo">
-                <span class="site-logo-mark">SB</span>
-                <span class="site-logo-text">slow blossom</span>
+        <div class="site-header-bar">
+            <div class="site-header-social">
+                <a href="https://www.instagram.com/" class="site-header-icon" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+                        <circle cx="12" cy="12" r="4" />
+                        <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
+                    </svg>
+                </a>
+                <a href="https://pf.kakao.com/_cxcUFb" class="site-header-icon site-header-icon-kakao" target="_blank" rel="noopener noreferrer" aria-label="카카오톡 채널">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 4.2c-4.7 0-8.5 3-8.5 6.7 0 2.4 1.6 4.5 4 5.7l-.9 3.4 3.8-2.1c.5.1 1.1.2 1.6.2 4.7 0 8.5-3 8.5-6.7S16.7 4.2 12 4.2Z" fill="currentColor" stroke="none" />
+                    </svg>
+                </a>
+            </div>
+
+            <a href="/" class="site-brand">
+                <span class="site-brand-en">SSF</span>
+                <span class="site-brand-ko">싱싱한 팜</span>
             </a>
 
-            <button type="button" class="site-nav-toggle" id="site-nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-
-            <nav class="site-nav" id="site-nav" aria-label="주요 메뉴">
-                <a href="/#about" class="site-nav-link">회사소개</a>
-                <a href="/#business" class="site-nav-link">사업분야</a>
-                <a href="/#events" class="site-nav-link">행사안내</a>
-                <a href="/#news" class="site-nav-link">소식</a>
-                <a href="/#contact" class="site-nav-link">문의</a>
-                <AuthorizeView>
-                    <Authorized>
-                        @if (context.User.IsInRole(AuthRoles.Admin))
-                        {
-                            <a href="/home" class="site-nav-link site-nav-link-accent">관리자</a>
-                        }
-                        else
-                        {
-                            <a href="/welcome" class="site-nav-link site-nav-link-accent">행사 입장</a>
-                        }
-                    </Authorized>
-                    <NotAuthorized>
-                        <a href="/login" class="site-nav-link site-nav-link-accent">로그인</a>
-                    </NotAuthorized>
-                </AuthorizeView>
-            </nav>
+            <div class="site-header-actions">
+                <a href="https://smartstore.naver.com/" class="site-header-text-link" target="_blank" rel="noopener noreferrer">Smart Store</a>
+                <button type="button" class="site-nav-toggle" id="site-nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
         </div>
+
+        <nav class="site-nav" id="site-nav" aria-label="주요 메뉴">
+            <a href="/#top" class="site-nav-link">SSF</a>
+            <a href="/#about" class="site-nav-link">About</a>
+            <a href="/#gallery" class="site-nav-link">Gallery</a>
+            <a href="/#faq" class="site-nav-link">FAQ</a>
+            <a href="/#inquiry" class="site-nav-link">Inquiry</a>
+            <AuthorizeView>
+                <Authorized>
+                    @if (context.User.IsInRole(AuthRoles.Admin))
+                    {
+                        <a href="/home" class="site-nav-link site-nav-link-accent">관리자</a>
+                    }
+                    else
+                    {
+                        <a href="/welcome" class="site-nav-link site-nav-link-accent">행사 입장</a>
+                    }
+                </Authorized>
+            </AuthorizeView>
+        </nav>
     </header>
 
     <main class="site-main">
         @Body
     </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer" id="inquiry">
         <div class="site-footer-inner">
             <div class="site-footer-brand">
-                <span class="site-logo-mark">SB</span>
-                <div>
-                    <strong>slow blossom</strong>
-                    <p>프리미엄 로테이션 소개팅 · 이벤트 기획</p>
-                </div>
+                <strong>SSF 싱싱한팜</strong>
+                <p>대표 : 이효정</p>
+                <p>이메일 : <a href="mailto:singsingfarm22@naver.com">singsingfarm22@naver.com</a></p>
+                <p>사업자등록번호 : 354-70-00725</p>
+                <p>주소 : 대구광역시 달서구 송현로 113, 2층</p>
             </div>
             <div class="site-footer-links">
-                <a href="/#about">회사소개</a>
-                <a href="/#business">사업분야</a>
-                <a href="/login">행사 로그인</a>
-                <a href="https://pf.kakao.com/_cxcUFb" target="_blank" rel="noopener noreferrer">카카오 채널</a>
+                <a href="/#top">SSF</a>
+                <a href="/#about">About</a>
+                <a href="/#gallery">Gallery</a>
+                <a href="/#faq">FAQ</a>
+                <a href="/#inquiry">Inquiry</a>
             </div>
-            <p class="site-footer-copy">© @DateTime.Now.Year slow blossom. All rights reserved.</p>
         </div>
+        <p class="site-footer-copy">COPYRIGHT © @DateTime.Now.Year. All rights reserved.</p>
     </footer>
 </div>
 
