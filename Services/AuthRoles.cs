@@ -3,6 +3,7 @@ namespace RotationDating.Web.Services;
 public static class AuthRoles
 {
     public const string Admin = "Admin";
+    public const string SiteAdmin = "SiteAdmin";
     public const string Participant = "Participant";
 
     private static readonly HashSet<string> AdminUserNames = new(StringComparer.Ordinal)

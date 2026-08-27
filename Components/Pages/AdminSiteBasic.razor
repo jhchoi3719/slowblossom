@@ -1,0 +1,131 @@
+@page "/admin/site/basic"
+@layout Layout.SiteLayout
+@attribute [Authorize(Roles = "SiteAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Services
+@inject SiteContentService SiteContent
+
+<PageTitle>기본 정보</PageTitle>
+
+<div class="ssf-admin-page">
+    <header class="page-header">
+        <a href="/admin/site" class="back-link">← 홈페이지 관리</a>
+        <p class="ssf-admin-eyebrow">SSF</p>
+        <h1>기본 정보</h1>
+        <span class="ssf-accent-line" aria-hidden="true"></span>
+        <p class="subtitle">메인 화면 문구, 연락 링크, 푸터</p>
+    </header>
+
+    @if (Saved)
+    {
+        <div class="alert-success">저장되었습니다.</div>
+    }
+    @if (Error == "size")
+    {
+        <div class="error-text">이미지는 8MB 이하여야 합니다.</div>
+    }
+    @if (Error == "type")
+    {
+        <div class="error-text">JPG, PNG, WEBP, GIF 파일만 올릴 수 있습니다.</div>
+    }
+
+    <form method="post" action="/admin/site/basic/save" enctype="multipart/form-data" class="form-stack site-admin-form">
+        <section class="card form-card">
+            <h2>메인 비주얼</h2>
+            <label class="form-field">
+                <span class="label">영문 제목</span>
+                <input type="text" name="heroTitle" class="input" value="@_site.Get(SiteContentKeys.HeroTitle)" maxlength="200" />
+            </label>
+            <label class="form-field">
+                <span class="label">소개 문구</span>
+                <textarea name="heroDesc" class="input textarea" rows="3">@_site.Get(SiteContentKeys.HeroDesc)</textarea>
+            </label>
+            <SiteImageField Label="배경 사진" UrlFieldName="heroImageUrl" FileFieldName="heroImage" ImageUrl="@_site.Get(SiteContentKeys.HeroImage)" />
+        </section>
+
+        <section class="card form-card">
+            <h2>수업 안내</h2>
+            <label class="form-field">
+                <span class="label">안내문 (한글)</span>
+                <textarea name="introNotice" class="input textarea" rows="4">@_site.Get(SiteContentKeys.IntroNotice)</textarea>
+            </label>
+            <label class="form-field">
+                <span class="label">안내문 (영문)</span>
+                <textarea name="introNoticeEn" class="input textarea" rows="3">@_site.Get(SiteContentKeys.IntroNoticeEn)</textarea>
+            </label>
+        </section>
+
+        <section class="card form-card">
+            <h2>링크</h2>
+            <label class="form-field">
+                <span class="label">카카오톡 채널</span>
+                <input type="url" name="kakaoUrl" class="input" value="@_site.Get(SiteContentKeys.KakaoUrl)" maxlength="500" />
+            </label>
+            <label class="form-field">
+                <span class="label">인스타그램</span>
+                <input type="url" name="instagramUrl" class="input" value="@_site.Get(SiteContentKeys.InstagramUrl)" maxlength="500" />
+            </label>
+            <label class="form-field">
+                <span class="label">스마트스토어</span>
+                <input type="url" name="storeUrl" class="input" value="@_site.Get(SiteContentKeys.StoreUrl)" maxlength="500" />
+            </label>
+        </section>
+
+        <section class="card form-card">
+            <h2>행사 배너</h2>
+            <label class="form-field">
+                <span class="label">작은 제목</span>
+                <input type="text" name="eventEyebrow" class="input" value="@_site.Get(SiteContentKeys.EventEyebrow)" maxlength="80" />
+            </label>
+            <label class="form-field">
+                <span class="label">제목</span>
+                <input type="text" name="eventTitle" class="input" value="@_site.Get(SiteContentKeys.EventTitle)" maxlength="120" />
+            </label>
+            <label class="form-field">
+                <span class="label">설명</span>
+                <textarea name="eventDesc" class="input textarea" rows="3">@_site.Get(SiteContentKeys.EventDesc)</textarea>
+            </label>
+        </section>
+
+        <section class="card form-card">
+            <h2>푸터</h2>
+            <label class="form-field">
+                <span class="label">상호</span>
+                <input type="text" name="footerCompany" class="input" value="@_site.Get(SiteContentKeys.FooterCompany)" maxlength="80" />
+            </label>
+            <label class="form-field">
+                <span class="label">대표</span>
+                <input type="text" name="footerOwner" class="input" value="@_site.Get(SiteContentKeys.FooterOwner)" maxlength="80" />
+            </label>
+            <label class="form-field">
+                <span class="label">이메일</span>
+                <input type="email" name="footerEmail" class="input" value="@_site.Get(SiteContentKeys.FooterEmail)" maxlength="120" />
+            </label>
+            <label class="form-field">
+                <span class="label">사업자등록번호</span>
+                <input type="text" name="footerBizNo" class="input" value="@_site.Get(SiteContentKeys.FooterBizNo)" maxlength="40" />
+            </label>
+            <label class="form-field">
+                <span class="label">주소</span>
+                <input type="text" name="footerAddress" class="input" value="@_site.Get(SiteContentKeys.FooterAddress)" maxlength="200" />
+            </label>
+        </section>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">저장</button>
+            <a class="btn btn-secondary" href="/admin/site">취소</a>
+        </div>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public bool Saved { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private SiteContentSnapshot _site = SiteContentSnapshot.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _site = await SiteContent.GetAsync();
+    }
+}

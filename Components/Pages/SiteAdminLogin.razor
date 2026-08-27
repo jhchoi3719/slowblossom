@@ -1,0 +1,45 @@
+@page "/admin/site/login"
+@layout Layout.SiteLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using RotationDating.Web.Services
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>관리자 로그인</PageTitle>
+
+<div class="ssf-admin-page ssf-admin-login">
+    <p class="ssf-admin-eyebrow">SSF</p>
+    <h1>관리자 로그인</h1>
+    <span class="ssf-accent-line" aria-hidden="true"></span>
+    <p class="ssf-admin-lead">홈페이지 글과 사진을 수정하려면 로그인해 주세요.</p>
+
+    @if (Error == "invalid")
+    {
+        <div class="error-text">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    }
+
+    <form method="post" action="/admin/site/login" class="ssf-admin-panel">
+        <label class="form-field">
+            <span class="label">아이디</span>
+            <input type="text" name="username" class="input" autocomplete="username" maxlength="50" required />
+        </label>
+        <label class="form-field">
+            <span class="label">비밀번호</span>
+            <input type="password" name="password" class="input" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="btn btn-primary">로그인</button>
+        <a href="/" class="back-link">← 홈페이지로</a>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        if (state.User.IsInRole(AuthRoles.SiteAdmin))
+            Navigation.NavigateTo("/admin/site", forceLoad: true);
+    }
+}

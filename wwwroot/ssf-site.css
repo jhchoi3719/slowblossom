@@ -182,6 +182,306 @@ html:has(.site-shell) body {
     border-bottom-color: var(--ssf-pink);
 }
 
+button.site-nav-logout {
+    background: none;
+    padding: 6px 2px 8px;
+    cursor: pointer;
+    font: inherit;
+    color: var(--ssf-muted);
+}
+
+.ssf-admin-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 48px 20px 96px;
+}
+
+.ssf-admin-page .page-header {
+    margin-bottom: 28px;
+}
+
+.ssf-admin-page .page-header h1,
+.ssf-admin-login h1 {
+    margin: 8px 0 12px;
+    font-family: var(--ssf-serif);
+    font-size: clamp(2rem, 4vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ssf-text);
+    line-height: 1.2;
+}
+
+.ssf-admin-page .back-link {
+    display: inline-block;
+    margin-bottom: 4px;
+    color: var(--ssf-muted);
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.ssf-admin-page .back-link:hover {
+    color: var(--ssf-pink);
+}
+
+.ssf-admin-page .subtitle,
+.ssf-admin-lead {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ssf-muted);
+}
+
+.ssf-admin-eyebrow {
+    margin: 0;
+    font-family: var(--ssf-serif);
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ssf-pink);
+}
+
+.ssf-admin-login {
+    max-width: 460px;
+    padding-top: 72px;
+    text-align: center;
+}
+
+.ssf-admin-login .ssf-accent-line {
+    margin: 0 auto 16px;
+}
+
+.site-shell .ssf-admin-page .card,
+.site-shell .ssf-admin-page .menu-card,
+.ssf-admin-panel {
+    background: #fff;
+    border: 1px solid var(--ssf-border);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(90, 40, 60, 0.04);
+}
+
+.site-shell .ssf-admin-page .card {
+    padding: 22px;
+    margin-bottom: 16px;
+}
+
+.site-shell .ssf-admin-page .card h2 {
+    margin: 0 0 18px;
+    font-family: var(--ssf-serif);
+    font-size: 1.45rem;
+    font-weight: 600;
+    color: var(--ssf-text);
+}
+
+.site-shell .ssf-admin-page .menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: transparent;
+    border: none;
+}
+
+.site-shell .ssf-admin-page .menu-card {
+    padding: 20px 22px;
+    gap: 16px;
+    box-shadow: 0 8px 24px rgba(90, 40, 60, 0.04);
+}
+
+.site-shell .ssf-admin-page .menu-card:last-child {
+    border-bottom: 1px solid var(--ssf-border);
+}
+
+.site-shell .ssf-admin-page .menu-card:hover {
+    border-color: #e3cfd6;
+    box-shadow: 0 12px 28px rgba(90, 40, 60, 0.07);
+}
+
+.site-shell .ssf-admin-page .menu-card:active {
+    background: #fff;
+    transform: none;
+}
+
+.site-shell .ssf-admin-page .menu-icon-badge,
+.site-shell .ssf-admin-page .menu-icon-badge.tone-rose,
+.site-shell .ssf-admin-page .menu-icon-badge.tone-blue,
+.site-shell .ssf-admin-page .menu-icon-badge.tone-stone,
+.site-shell .ssf-admin-page .menu-icon-badge.tone-teal {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #faf7f5;
+    color: var(--ssf-rose);
+    border: 1px solid var(--ssf-border);
+}
+
+.site-shell .ssf-admin-page .menu-title {
+    font-family: var(--ssf-serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ssf-text);
+}
+
+.site-shell .ssf-admin-page .menu-desc {
+    color: var(--ssf-muted);
+    font-size: 13px;
+}
+
+.site-shell .ssf-admin-page .menu-arrow {
+    color: var(--ssf-pink);
+}
+
+.site-shell .ssf-admin-page .form-field,
+.site-shell .ssf-admin-page .form-stack {
+    gap: 12px;
+}
+
+.site-shell .ssf-admin-page .form-field .label,
+.site-shell .ssf-admin-page .label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--ssf-muted);
+}
+
+.site-shell .ssf-admin-page .input,
+.site-shell .ssf-admin-page select.input,
+.site-shell .ssf-admin-page textarea.input {
+    border: 1px solid var(--ssf-border);
+    border-radius: 12px;
+    background: #faf7f5;
+    box-shadow: none;
+    color: var(--ssf-text);
+    font-family: var(--ssf-sans);
+}
+
+.site-shell .ssf-admin-page .input:focus {
+    border-color: var(--ssf-pink);
+    box-shadow: 0 0 0 3px rgba(232, 90, 122, 0.12);
+    background: #fff;
+}
+
+.site-shell .ssf-admin-page input[type="file"].input {
+    padding: 10px 12px;
+    background: #fff;
+    border-style: dashed;
+}
+
+.site-shell .ssf-admin-page .btn {
+    border-radius: 999px;
+    min-height: 42px;
+    padding: 0 18px;
+    font-family: var(--ssf-sans);
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.site-shell .ssf-admin-page .btn-sm {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
+}
+
+.site-shell .ssf-admin-page .btn-primary {
+    background: var(--ssf-text);
+    border-color: var(--ssf-text);
+    color: #fff;
+}
+
+.site-shell .ssf-admin-page .btn-primary:hover {
+    background: var(--ssf-pink-dark);
+    border-color: var(--ssf-pink-dark);
+}
+
+.site-shell .ssf-admin-page .btn-secondary {
+    background: #fff;
+    border-color: #d8d0d3;
+    color: var(--ssf-text);
+}
+
+.site-shell .ssf-admin-page .btn-secondary:hover {
+    border-color: var(--ssf-pink);
+    color: var(--ssf-pink);
+}
+
+.site-shell .ssf-admin-page .btn-danger {
+    background: #fff;
+    color: var(--ssf-rose);
+    border-color: var(--ssf-border);
+}
+
+.site-shell .ssf-admin-page .alert-success {
+    background: #f4faf6;
+    color: #3d7a55;
+    border: 1px solid #d7eadc;
+    border-radius: 14px;
+    font-weight: 600;
+}
+
+.site-shell .ssf-admin-page .error-text {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    background: #fdf4f4;
+    border: 1px solid #f0d7d7;
+    border-radius: 14px;
+    color: #a04b4b;
+}
+
+.site-shell .ssf-admin-page .form-help {
+    color: var(--ssf-muted);
+}
+
+.site-shell .ssf-admin-page .site-admin-preview-link a {
+    color: var(--ssf-pink);
+}
+
+.site-shell .ssf-admin-page .site-admin-item.saved {
+    border-color: #c9dfd0;
+}
+
+.site-shell .ssf-admin-page .checkbox-label {
+    color: var(--ssf-text);
+}
+
+.site-shell .ssf-admin-page .form-actions {
+    margin-top: 8px;
+}
+
+.site-shell .ssf-admin-page .form-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.site-shell .ssf-admin-page .site-admin-preview {
+    border-radius: 14px;
+    border: 1px solid var(--ssf-border);
+}
+
+.site-shell .ssf-admin-page .btn-danger:hover {
+    border-color: var(--ssf-rose);
+}
+
+.ssf-admin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 28px 24px;
+    margin-top: 28px;
+    text-align: left;
+}
+
+.ssf-admin-login .error-text {
+    margin-top: 20px;
+}
+
+.ssf-admin-login .btn-primary {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.ssf-admin-login .back-link {
+    text-align: center;
+}
+
 .site-main {
     padding: 0;
 }
@@ -246,6 +546,7 @@ html:has(.site-shell) body {
     letter-spacing: -0.01em;
     line-height: 1.65;
     opacity: 0.92;
+    white-space: pre-line;
 }
 
 .ssf-intro {
@@ -285,13 +586,15 @@ html:has(.site-shell) body {
     font-size: 14px;
     line-height: 1.8;
     color: var(--ssf-text);
+    white-space: pre-line;
 }
 
 .ssf-intro-notice span[lang="en"] {
-    display: inline-block;
+    display: block;
     margin-top: 8px;
     font-size: 12px;
     color: var(--ssf-muted);
+    white-space: pre-line;
 }
 
 .ssf-intro-actions {
@@ -483,6 +786,7 @@ html:has(.site-shell) body {
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.45;
+    white-space: pre-line;
 }
 
 .ssf-accent-line {
@@ -498,6 +802,7 @@ html:has(.site-shell) body {
     font-size: 14px;
     line-height: 1.85;
     color: var(--ssf-muted);
+    white-space: pre-line;
 }
 
 .ssf-event-banner {
@@ -530,6 +835,7 @@ html:has(.site-shell) body {
     font-size: 14px;
     line-height: 1.7;
     opacity: 0.92;
+    white-space: pre-line;
 }
 
 .ssf-gallery {
@@ -600,6 +906,7 @@ html:has(.site-shell) body {
     font-size: 14px;
     line-height: 1.8;
     color: var(--ssf-muted);
+    white-space: pre-line;
 }
 
 .ssf-about-list {
@@ -683,8 +990,12 @@ html:has(.site-shell) body {
 }
 
 .ssf-faq-body {
-    padding: 0 22px 20px;
+    padding: 16px 22px 20px;
     border-top: 1px solid var(--ssf-border);
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--ssf-muted);
+    white-space: pre-line;
 }
 
 .ssf-faq-body p {
@@ -703,6 +1014,62 @@ html:has(.site-shell) body {
     justify-content: center;
     max-width: 760px;
     margin: 22px auto 0;
+}
+
+.ssf-news {
+    padding: 40px 0 72px;
+    background: var(--ssf-bg);
+}
+
+.ssf-news .ssf-serif-heading {
+    margin-bottom: 28px;
+}
+
+.ssf-news-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.ssf-news-card {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 20px;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid var(--ssf-border);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(90, 40, 60, 0.04);
+}
+
+.ssf-news-card:not(:has(.ssf-news-thumb)) {
+    grid-template-columns: 1fr;
+}
+
+.ssf-news-thumb {
+    min-height: 120px;
+    border-radius: 12px;
+    background: var(--thumb) center/cover no-repeat, #eadfe3;
+}
+
+.ssf-news-date {
+    margin: 0 0 6px;
+    font-size: 12px;
+    color: var(--ssf-muted);
+}
+
+.ssf-news-copy h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.ssf-news-copy p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ssf-muted);
+    white-space: pre-line;
 }
 
 .ssf-write-btn {
@@ -766,14 +1133,37 @@ html:has(.site-shell) body {
     text-decoration: none;
 }
 
-.site-footer-copy {
+.site-footer-copy-row {
     max-width: var(--ssf-max);
     margin: 28px auto 0;
     padding-top: 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.site-footer-copy {
+    margin: 0;
+    padding: 0;
+    border: none;
     font-size: 12px !important;
     color: rgba(255, 255, 255, 0.45) !important;
     text-align: left;
+}
+
+.site-footer-admin {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+}
+
+.site-footer-admin:hover {
+    color: #fff;
 }
 
 .site-footer-links {
@@ -798,7 +1188,8 @@ html:has(.site-shell) body {
     .ssf-split-layout,
     .ssf-split-reverse,
     .ssf-about-grid,
-    .ssf-gallery-grid {
+    .ssf-gallery-grid,
+    .ssf-news-card {
         grid-template-columns: 1fr;
     }
 

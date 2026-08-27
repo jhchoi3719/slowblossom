@@ -114,6 +114,7 @@ public static class DatabaseInitializer
         await MigrateDatePollTablesAsync(db);
         await MigrateSurveyTablesAsync(db);
         await MigrateConsentSettingsAsync(db);
+        await MigrateSiteContentTablesAsync(db);
     }
 
     private static async Task MigrateConsentSettingsAsync(AppDbContext db)
@@ -129,6 +130,74 @@ public static class DatabaseInitializer
             );
             CREATE UNIQUE INDEX IF NOT EXISTS IX_VenueConsentSettings_VenueKey
                 ON VenueConsentSettings (VenueKey);
+            """;
+
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    private static async Task MigrateSiteContentTablesAsync(AppDbContext db)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS SiteSettings (
+                Id INTEGER NOT NULL CONSTRAINT PK_SiteSettings PRIMARY KEY AUTOINCREMENT,
+                Key TEXT NOT NULL,
+                Value TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_SiteSettings_Key ON SiteSettings (Key);
+
+            CREATE TABLE IF NOT EXISTS SiteSections (
+                Id INTEGER NOT NULL CONSTRAINT PK_SiteSections PRIMARY KEY AUTOINCREMENT,
+                Heading TEXT NOT NULL,
+                Title TEXT NOT NULL,
+                Body TEXT NOT NULL,
+                ImageUrl1 TEXT NOT NULL,
+                ImageUrl2 TEXT NOT NULL,
+                ImageAlt1 TEXT NOT NULL,
+                ImageAlt2 TEXT NOT NULL,
+                IsReversed INTEGER NOT NULL DEFAULT 0,
+                SortOrder INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_SiteSections_SortOrder ON SiteSections (SortOrder);
+
+            CREATE TABLE IF NOT EXISTS SiteFeatureCards (
+                Id INTEGER NOT NULL CONSTRAINT PK_SiteFeatureCards PRIMARY KEY AUTOINCREMENT,
+                Eyebrow TEXT NOT NULL,
+                Title TEXT NOT NULL,
+                Pill TEXT NOT NULL,
+                ImageUrl TEXT NOT NULL,
+                LinkUrl TEXT NOT NULL,
+                Variant TEXT NOT NULL,
+                SortOrder INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_SiteFeatureCards_SortOrder ON SiteFeatureCards (SortOrder);
+
+            CREATE TABLE IF NOT EXISTS SiteGalleryItems (
+                Id INTEGER NOT NULL CONSTRAINT PK_SiteGalleryItems PRIMARY KEY AUTOINCREMENT,
+                Category TEXT NOT NULL,
+                Caption TEXT NOT NULL,
+                ImageUrl TEXT NOT NULL,
+                SortOrder INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_SiteGalleryItems_SortOrder ON SiteGalleryItems (SortOrder);
+
+            CREATE TABLE IF NOT EXISTS SiteFaqItems (
+                Id INTEGER NOT NULL CONSTRAINT PK_SiteFaqItems PRIMARY KEY AUTOINCREMENT,
+                Question TEXT NOT NULL,
+                Answer TEXT NOT NULL,
+                SortOrder INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_SiteFaqItems_SortOrder ON SiteFaqItems (SortOrder);
+
+            CREATE TABLE IF NOT EXISTS SitePosts (
+                Id INTEGER NOT NULL CONSTRAINT PK_SitePosts PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL,
+                Body TEXT NOT NULL,
+                ImageUrl TEXT NULL,
+                IsPublished INTEGER NOT NULL DEFAULT 1,
+                CreatedAt TEXT NOT NULL,
+                SortOrder INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_SitePosts_SortOrder ON SitePosts (SortOrder);
             """;
 
         await db.Database.ExecuteSqlRawAsync(sql);

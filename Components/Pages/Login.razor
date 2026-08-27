@@ -16,6 +16,10 @@
 
             <form method="post" action="/login" class="login-form" enctype="application/x-www-form-urlencoded">
                 <AntiforgeryToken />
+                @if (!string.IsNullOrWhiteSpace(ReturnUrl))
+                {
+                    <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+                }
                 <input type="text"
                        name="username"
                        class="input login-input"
@@ -47,6 +51,9 @@
 @code {
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
 
     private string _errorMessage => Error switch
     {

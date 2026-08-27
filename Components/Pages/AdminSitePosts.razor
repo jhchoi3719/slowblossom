@@ -1,0 +1,115 @@
+@page "/admin/site/posts"
+@layout Layout.SiteLayout
+@attribute [Authorize(Roles = "SiteAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Models
+@using RotationDating.Web.Services
+@inject SiteContentService SiteContent
+
+<PageTitle>게시글</PageTitle>
+
+<div class="ssf-admin-page">
+    <header class="page-header">
+        <a href="/admin/site" class="back-link">← 홈페이지 관리</a>
+        <p class="ssf-admin-eyebrow">SSF</p>
+        <h1>게시글</h1>
+        <span class="ssf-accent-line" aria-hidden="true"></span>
+        <p class="subtitle">공개하면 홈페이지 소식 칸에 나타납니다</p>
+    </header>
+
+    @if (Saved)
+    {
+        <div class="alert-success">저장되었습니다.</div>
+    }
+    @if (Deleted)
+    {
+        <div class="alert-success">삭제되었습니다.</div>
+    }
+    @if (Error == "empty")
+    {
+        <div class="error-text">제목과 내용을 입력해 주세요.</div>
+    }
+    @if (Error == "size")
+    {
+        <div class="error-text">이미지는 8MB 이하여야 합니다.</div>
+    }
+    @if (Error == "type")
+    {
+        <div class="error-text">JPG, PNG, WEBP, GIF 파일만 올릴 수 있습니다.</div>
+    }
+
+    @foreach (var post in _posts)
+    {
+        <form method="post"
+              action="/admin/site/posts/save"
+              enctype="multipart/form-data"
+              class="card form-card site-admin-item @(SavedId == post.Id ? "saved" : "")"
+              id="item-@post.Id">
+            <input type="hidden" name="id" value="@post.Id" />
+            <div class="site-admin-item-head">
+                <strong>@(post.IsPublished ? "공개" : "비공개") · @post.CreatedAt.ToString("yyyy.MM.dd")</strong>
+                <div class="site-admin-item-actions">
+                    <button type="submit" formaction="/admin/site/posts/move" formnovalidate name="direction" value="up" class="btn btn-sm btn-secondary">위로</button>
+                    <button type="submit" formaction="/admin/site/posts/move" formnovalidate name="direction" value="down" class="btn btn-sm btn-secondary">아래로</button>
+                    <button type="submit" formaction="/admin/site/posts/delete" formnovalidate class="btn btn-sm btn-danger" onclick="return confirm('이 글을 삭제할까요?');">삭제</button>
+                </div>
+            </div>
+            <label class="form-field">
+                <span class="label">제목</span>
+                <input type="text" name="title" class="input" value="@post.Title" maxlength="200" required />
+            </label>
+            <label class="form-field">
+                <span class="label">내용</span>
+                <textarea name="body" class="input textarea" rows="6" required>@post.Body</textarea>
+            </label>
+            <label class="checkbox-label">
+                <input type="hidden" name="isPublished" value="false" />
+                @if (post.IsPublished)
+                {
+                    <input type="checkbox" name="isPublished" value="true" checked="checked" />
+                }
+                else
+                {
+                    <input type="checkbox" name="isPublished" value="true" />
+                }
+                홈페이지에 공개
+            </label>
+            <SiteImageField Label="사진 (선택)" ImageUrl="@post.ImageUrl" />
+            <button type="submit" class="btn btn-primary">이 글 저장</button>
+        </form>
+    }
+
+    <form method="post" action="/admin/site/posts/add" enctype="multipart/form-data" class="card form-card site-admin-item">
+        <h2>글 쓰기</h2>
+        <label class="form-field">
+            <span class="label">제목</span>
+            <input type="text" name="title" class="input" maxlength="200" required />
+        </label>
+        <label class="form-field">
+            <span class="label">내용</span>
+            <textarea name="body" class="input textarea" rows="6" required></textarea>
+        </label>
+        <label class="checkbox-label">
+            <input type="hidden" name="isPublished" value="false" />
+            <input type="checkbox" name="isPublished" value="true" checked="checked" />
+            홈페이지에 공개
+        </label>
+        <SiteImageField Label="사진 (선택)" />
+        <button type="submit" class="btn btn-primary">등록</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public bool Saved { get; set; }
+    [SupplyParameterFromQuery] public bool Deleted { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public int? Id { get; set; }
+
+    private List<SitePost> _posts = [];
+    private int? SavedId => Saved ? Id : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _posts = await SiteContent.GetAllPostsAsync();
+    }
+}

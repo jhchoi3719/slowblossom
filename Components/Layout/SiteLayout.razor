@@ -1,23 +1,30 @@
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using RotationDating.Web.Services
+@inject SiteContentService SiteContent
 
 <div class="site-shell">
     <header class="site-header" id="site-header">
         <div class="site-header-bar">
             <div class="site-header-social">
-                <a href="https://www.instagram.com/" class="site-header-icon" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
-                        <circle cx="12" cy="12" r="4" />
-                        <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
-                    </svg>
-                </a>
-                <a href="https://pf.kakao.com/_cxcUFb" class="site-header-icon site-header-icon-kakao" target="_blank" rel="noopener noreferrer" aria-label="카카오톡 채널">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 4.2c-4.7 0-8.5 3-8.5 6.7 0 2.4 1.6 4.5 4 5.7l-.9 3.4 3.8-2.1c.5.1 1.1.2 1.6.2 4.7 0 8.5-3 8.5-6.7S16.7 4.2 12 4.2Z" fill="currentColor" stroke="none" />
-                    </svg>
-                </a>
+                @if (!string.IsNullOrWhiteSpace(_instagramUrl))
+                {
+                    <a href="@_instagramUrl" class="site-header-icon" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+                            <circle cx="12" cy="12" r="4" />
+                            <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
+                        </svg>
+                    </a>
+                }
+                @if (!string.IsNullOrWhiteSpace(_kakaoUrl))
+                {
+                    <a href="@_kakaoUrl" class="site-header-icon site-header-icon-kakao" target="_blank" rel="noopener noreferrer" aria-label="카카오톡 채널">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 4.2c-4.7 0-8.5 3-8.5 6.7 0 2.4 1.6 4.5 4 5.7l-.9 3.4 3.8-2.1c.5.1 1.1.2 1.6.2 4.7 0 8.5-3 8.5-6.7S16.7 4.2 12 4.2Z" fill="currentColor" stroke="none" />
+                        </svg>
+                    </a>
+                }
             </div>
 
             <a href="/" class="site-brand">
@@ -26,7 +33,10 @@
             </a>
 
             <div class="site-header-actions">
-                <a href="https://smartstore.naver.com/" class="site-header-text-link" target="_blank" rel="noopener noreferrer">Smart Store</a>
+                @if (!string.IsNullOrWhiteSpace(_storeUrl))
+                {
+                    <a href="@_storeUrl" class="site-header-text-link" target="_blank" rel="noopener noreferrer">Smart Store</a>
+                }
                 <button type="button" class="site-nav-toggle" id="site-nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">
                     <span></span>
                     <span></span>
@@ -38,19 +48,28 @@
         <nav class="site-nav" id="site-nav" aria-label="주요 메뉴">
             <a href="/#top" class="site-nav-link">SSF</a>
             <a href="/#about" class="site-nav-link">About</a>
-            <a href="/#gallery" class="site-nav-link">Gallery</a>
-            <a href="/#faq" class="site-nav-link">FAQ</a>
-            <a href="/#inquiry" class="site-nav-link">Inquiry</a>
-            <AuthorizeView>
+            @if (_hasGallery)
+            {
+                <a href="/#gallery" class="site-nav-link">Gallery</a>
+            }
+            @if (_hasNews)
+            {
+                <a href="/#news" class="site-nav-link">소식</a>
+            }
+            @if (_hasFaq)
+            {
+                <a href="/#faq" class="site-nav-link">FAQ</a>
+            }
+            @if (!string.IsNullOrWhiteSpace(_kakaoUrl))
+            {
+                <a href="@_kakaoUrl" class="site-nav-link" target="_blank" rel="noopener noreferrer">Inquiry</a>
+            }
+            <AuthorizeView Roles="SiteAdmin">
                 <Authorized>
-                    @if (context.User.IsInRole(AuthRoles.Admin))
-                    {
-                        <a href="/home" class="site-nav-link site-nav-link-accent">관리자</a>
-                    }
-                    else
-                    {
-                        <a href="/welcome" class="site-nav-link site-nav-link-accent">행사 입장</a>
-                    }
+                    <a href="/admin/site" class="site-nav-link site-nav-link-accent">콘텐츠 수정</a>
+                    <form method="post" action="/admin/site/logout" class="inline-form">
+                        <button type="submit" class="site-nav-link site-nav-logout">로그아웃</button>
+                    </form>
                 </Authorized>
             </AuthorizeView>
         </nav>
@@ -63,21 +82,56 @@
     <footer class="site-footer" id="inquiry">
         <div class="site-footer-inner">
             <div class="site-footer-brand">
-                <strong>SSF 싱싱한팜</strong>
-                <p>대표 : 이효정</p>
-                <p>이메일 : <a href="mailto:singsingfarm22@naver.com">singsingfarm22@naver.com</a></p>
-                <p>사업자등록번호 : 354-70-00725</p>
-                <p>주소 : 대구광역시 달서구 송현로 113, 2층</p>
+                <strong>@_company</strong>
+                @if (!string.IsNullOrWhiteSpace(_owner))
+                {
+                    <p>대표 : @_owner</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(_email))
+                {
+                    <p>이메일 : <a href="mailto:@_email">@_email</a></p>
+                }
+                @if (!string.IsNullOrWhiteSpace(_bizNo))
+                {
+                    <p>사업자등록번호 : @_bizNo</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(_address))
+                {
+                    <p>주소 : @_address</p>
+                }
             </div>
             <div class="site-footer-links">
                 <a href="/#top">SSF</a>
                 <a href="/#about">About</a>
-                <a href="/#gallery">Gallery</a>
-                <a href="/#faq">FAQ</a>
-                <a href="/#inquiry">Inquiry</a>
+                @if (_hasGallery)
+                {
+                    <a href="/#gallery">Gallery</a>
+                }
+                @if (_hasNews)
+                {
+                    <a href="/#news">소식</a>
+                }
+                @if (_hasFaq)
+                {
+                    <a href="/#faq">FAQ</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(_kakaoUrl))
+                {
+                    <a href="@_kakaoUrl" target="_blank" rel="noopener noreferrer">Inquiry</a>
+                }
             </div>
         </div>
-        <p class="site-footer-copy">COPYRIGHT © @DateTime.Now.Year. All rights reserved.</p>
+        <div class="site-footer-copy-row">
+            <p class="site-footer-copy">COPYRIGHT © @DateTime.Now.Year. All rights reserved.</p>
+            <AuthorizeView Roles="SiteAdmin">
+                <Authorized>
+                    <a href="/admin/site" class="site-footer-admin">관리자</a>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/admin/site/login" class="site-footer-admin">관리자</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
     </footer>
 </div>
 
@@ -86,3 +140,33 @@
     <a href="" class="reload">새로고침</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private string _instagramUrl = "";
+    private string _kakaoUrl = "";
+    private string _storeUrl = "";
+    private string _company = "SSF 싱싱한팜";
+    private string _owner = "";
+    private string _email = "";
+    private string _bizNo = "";
+    private string _address = "";
+    private bool _hasGallery;
+    private bool _hasNews;
+    private bool _hasFaq;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var site = await SiteContent.GetAsync();
+        _instagramUrl = site.Get(SiteContentKeys.InstagramUrl);
+        _kakaoUrl = site.Get(SiteContentKeys.KakaoUrl);
+        _storeUrl = site.Get(SiteContentKeys.StoreUrl);
+        _company = site.Get(SiteContentKeys.FooterCompany, "SSF 싱싱한팜");
+        _owner = site.Get(SiteContentKeys.FooterOwner);
+        _email = site.Get(SiteContentKeys.FooterEmail);
+        _bizNo = site.Get(SiteContentKeys.FooterBizNo);
+        _address = site.Get(SiteContentKeys.FooterAddress);
+        _hasGallery = site.GalleryItems.Count > 0;
+        _hasNews = site.Posts.Count > 0;
+        _hasFaq = site.FaqItems.Count > 0;
+    }
+}

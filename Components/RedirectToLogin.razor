@@ -3,6 +3,19 @@
 @code {
     protected override void OnInitialized()
     {
-        Navigation.NavigateTo("/login", forceLoad: true);
+        var current = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (string.IsNullOrEmpty(current))
+            current = "/";
+        else if (!current.StartsWith('/'))
+            current = "/" + current;
+
+        var path = current.Split('?')[0];
+        if (path.StartsWith("/admin/site", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/admin/site/login", forceLoad: true);
+            return;
+        }
+
+        Navigation.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString(current)}", forceLoad: true);
     }
 }

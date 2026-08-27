@@ -1,0 +1,97 @@
+@page "/admin/site/gallery"
+@layout Layout.SiteLayout
+@attribute [Authorize(Roles = "SiteAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Services
+@inject SiteContentService SiteContent
+
+<PageTitle>갤러리 사진</PageTitle>
+
+<div class="ssf-admin-page">
+    <header class="page-header">
+        <a href="/admin/site" class="back-link">← 홈페이지 관리</a>
+        <p class="ssf-admin-eyebrow">SSF</p>
+        <h1>갤러리 사진</h1>
+        <span class="ssf-accent-line" aria-hidden="true"></span>
+        <p class="subtitle">분류 이름과 캡션, 사진을 수정합니다</p>
+    </header>
+
+    @if (Saved)
+    {
+        <div class="alert-success">저장되었습니다.</div>
+    }
+    @if (Deleted)
+    {
+        <div class="alert-success">삭제되었습니다.</div>
+    }
+    @if (Error == "empty")
+    {
+        <div class="error-text">사진을 올리거나 이미지 주소를 입력해 주세요.</div>
+    }
+    @if (Error == "size")
+    {
+        <div class="error-text">이미지는 8MB 이하여야 합니다.</div>
+    }
+    @if (Error == "type")
+    {
+        <div class="error-text">JPG, PNG, WEBP, GIF 파일만 올릴 수 있습니다.</div>
+    }
+
+    @foreach (var item in _site.GalleryItems)
+    {
+        <form method="post"
+              action="/admin/site/gallery/save"
+              enctype="multipart/form-data"
+              class="card form-card site-admin-item @(SavedId == item.Id ? "saved" : "")"
+              id="item-@item.Id">
+            <input type="hidden" name="id" value="@item.Id" />
+            <div class="site-admin-item-head">
+                <strong>@item.Category</strong>
+                <div class="site-admin-item-actions">
+                    <button type="submit" formaction="/admin/site/gallery/move" formnovalidate name="direction" value="up" class="btn btn-sm btn-secondary">위로</button>
+                    <button type="submit" formaction="/admin/site/gallery/move" formnovalidate name="direction" value="down" class="btn btn-sm btn-secondary">아래로</button>
+                    <button type="submit" formaction="/admin/site/gallery/delete" formnovalidate class="btn btn-sm btn-danger" onclick="return confirm('이 사진을 삭제할까요?');">삭제</button>
+                </div>
+            </div>
+            <label class="form-field">
+                <span class="label">분류</span>
+                <input type="text" name="category" class="input" value="@item.Category" maxlength="80" required />
+            </label>
+            <label class="form-field">
+                <span class="label">캡션</span>
+                <input type="text" name="caption" class="input" value="@item.Caption" maxlength="200" />
+            </label>
+            <SiteImageField ImageUrl="@item.ImageUrl" />
+            <button type="submit" class="btn btn-primary">이 사진 저장</button>
+        </form>
+    }
+
+    <form method="post" action="/admin/site/gallery/add" enctype="multipart/form-data" class="card form-card site-admin-item">
+        <h2>사진 추가</h2>
+        <label class="form-field">
+            <span class="label">분류</span>
+            <input type="text" name="category" class="input" maxlength="80" placeholder="예: 개업화분" required />
+        </label>
+        <label class="form-field">
+            <span class="label">캡션</span>
+            <input type="text" name="caption" class="input" maxlength="200" />
+        </label>
+        <SiteImageField />
+        <button type="submit" class="btn btn-primary">추가</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public bool Saved { get; set; }
+    [SupplyParameterFromQuery] public bool Deleted { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public int? Id { get; set; }
+
+    private SiteContentSnapshot _site = SiteContentSnapshot.Empty;
+    private int? SavedId => Saved ? Id : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _site = await SiteContent.GetAsync();
+    }
+}

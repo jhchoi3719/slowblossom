@@ -1,0 +1,136 @@
+@page "/admin/site/sections"
+@layout Layout.SiteLayout
+@attribute [Authorize(Roles = "SiteAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Services
+@inject SiteContentService SiteContent
+
+<PageTitle>소개 섹션</PageTitle>
+
+<div class="ssf-admin-page">
+    <header class="page-header">
+        <a href="/admin/site" class="back-link">← 홈페이지 관리</a>
+        <p class="ssf-admin-eyebrow">SSF</p>
+        <h1>소개 섹션</h1>
+        <span class="ssf-accent-line" aria-hidden="true"></span>
+        <p class="subtitle">사진 두 장과 안내 문구로 구성된 블록</p>
+    </header>
+
+    @if (Saved)
+    {
+        <div class="alert-success">저장되었습니다.</div>
+    }
+    @if (Deleted)
+    {
+        <div class="alert-success">삭제되었습니다.</div>
+    }
+    @if (Error == "size")
+    {
+        <div class="error-text">이미지는 8MB 이하여야 합니다.</div>
+    }
+    @if (Error == "type")
+    {
+        <div class="error-text">JPG, PNG, WEBP, GIF 파일만 올릴 수 있습니다.</div>
+    }
+
+    @foreach (var block in _site.Sections)
+    {
+        <form method="post"
+              action="/admin/site/sections/save"
+              enctype="multipart/form-data"
+              class="card form-card site-admin-item @(SavedId == block.Id ? "saved" : "")"
+              id="item-@block.Id">
+            <input type="hidden" name="id" value="@block.Id" />
+            <div class="site-admin-item-head">
+                <strong>섹션 @block.SortOrder</strong>
+                <div class="site-admin-item-actions">
+                    <button type="submit" formaction="/admin/site/sections/move" formnovalidate name="direction" value="up" class="btn btn-sm btn-secondary">위로</button>
+                    <button type="submit" formaction="/admin/site/sections/move" formnovalidate name="direction" value="down" class="btn btn-sm btn-secondary">아래로</button>
+                    <button type="submit" formaction="/admin/site/sections/delete" formnovalidate class="btn btn-sm btn-danger" onclick="return confirm('이 섹션을 삭제할까요?');">삭제</button>
+                </div>
+            </div>
+            <label class="form-field">
+                <span class="label">영문 제목</span>
+                <input type="text" name="heading" class="input" value="@block.Heading" maxlength="200" />
+            </label>
+            <label class="form-field">
+                <span class="label">제목</span>
+                <textarea name="title" class="input textarea" rows="2">@block.Title</textarea>
+            </label>
+            <label class="form-field">
+                <span class="label">본문</span>
+                <textarea name="body" class="input textarea" rows="4">@block.Body</textarea>
+            </label>
+            <label class="checkbox-label">
+                <input type="hidden" name="isReversed" value="false" />
+                @if (block.IsReversed)
+                {
+                    <input type="checkbox" name="isReversed" value="true" checked="checked" />
+                }
+                else
+                {
+                    <input type="checkbox" name="isReversed" value="true" />
+                }
+                글 왼쪽 / 사진 오른쪽
+            </label>
+            <SiteImageField Label="사진 1" UrlFieldName="imageUrl1" FileFieldName="image1" ImageUrl="@block.ImageUrl1" />
+            <label class="form-field">
+                <span class="label">사진 1 설명</span>
+                <input type="text" name="imageAlt1" class="input" value="@block.ImageAlt1" maxlength="200" />
+            </label>
+            <SiteImageField Label="사진 2" UrlFieldName="imageUrl2" FileFieldName="image2" ImageUrl="@block.ImageUrl2" />
+            <label class="form-field">
+                <span class="label">사진 2 설명</span>
+                <input type="text" name="imageAlt2" class="input" value="@block.ImageAlt2" maxlength="200" />
+            </label>
+            <button type="submit" class="btn btn-primary">이 섹션 저장</button>
+        </form>
+    }
+
+    <form method="post" action="/admin/site/sections/add" enctype="multipart/form-data" class="card form-card site-admin-item">
+        <h2>섹션 추가</h2>
+        <label class="form-field">
+            <span class="label">영문 제목</span>
+            <input type="text" name="heading" class="input" maxlength="200" />
+        </label>
+        <label class="form-field">
+            <span class="label">제목</span>
+            <textarea name="title" class="input textarea" rows="2"></textarea>
+        </label>
+        <label class="form-field">
+            <span class="label">본문</span>
+            <textarea name="body" class="input textarea" rows="4"></textarea>
+        </label>
+        <label class="checkbox-label">
+            <input type="hidden" name="isReversed" value="false" />
+            <input type="checkbox" name="isReversed" value="true" />
+            글 왼쪽 / 사진 오른쪽
+        </label>
+        <SiteImageField Label="사진 1" UrlFieldName="imageUrl1" FileFieldName="image1" />
+        <label class="form-field">
+            <span class="label">사진 1 설명</span>
+            <input type="text" name="imageAlt1" class="input" maxlength="200" />
+        </label>
+        <SiteImageField Label="사진 2" UrlFieldName="imageUrl2" FileFieldName="image2" />
+        <label class="form-field">
+            <span class="label">사진 2 설명</span>
+            <input type="text" name="imageAlt2" class="input" maxlength="200" />
+        </label>
+        <button type="submit" class="btn btn-primary">추가</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public bool Saved { get; set; }
+    [SupplyParameterFromQuery] public bool Deleted { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public int? Id { get; set; }
+
+    private SiteContentSnapshot _site = SiteContentSnapshot.Empty;
+    private int? SavedId => Saved ? Id : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _site = await SiteContent.GetAsync();
+    }
+}

@@ -4071,3 +4071,49 @@ select.input {
     border-color: var(--primary);
     background: var(--primary-soft);
 }
+
+.site-admin-form {
+    padding-bottom: 24px;
+}
+
+.site-admin-preview {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 12px;
+    background: #f3f0f1;
+}
+
+.site-admin-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.site-admin-item.saved {
+    border-color: var(--success);
+}
+
+.site-admin-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.site-admin-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.site-admin-preview-link {
+    margin: 18px 4px 8px;
+}
+
+.site-admin-preview-link a {
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+}

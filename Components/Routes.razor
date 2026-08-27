@@ -1,8 +1,10 @@
+@inject NavigationManager Navigation
+
 <Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized>
-                @if (context.User.Identity?.IsAuthenticated != true)
+                @if (context.User.Identity?.IsAuthenticated != true || IsSsfAdminPath())
                 {
                     <RedirectToLogin />
                 }
@@ -15,3 +17,11 @@
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private bool IsSsfAdminPath()
+    {
+        var path = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0];
+        return path.StartsWith("/admin/site", StringComparison.OrdinalIgnoreCase);
+    }
+}

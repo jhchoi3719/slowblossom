@@ -1,0 +1,66 @@
+@page "/admin/site/about"
+@layout Layout.SiteLayout
+@attribute [Authorize(Roles = "SiteAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Services
+@inject SiteContentService SiteContent
+
+<PageTitle>About</PageTitle>
+
+<div class="ssf-admin-page">
+    <header class="page-header">
+        <a href="/admin/site" class="back-link">← 홈페이지 관리</a>
+        <p class="ssf-admin-eyebrow">SSF</p>
+        <h1>About</h1>
+        <span class="ssf-accent-line" aria-hidden="true"></span>
+        <p class="subtitle">소개 글과 대표 사진</p>
+    </header>
+
+    @if (Saved)
+    {
+        <div class="alert-success">저장되었습니다.</div>
+    }
+    @if (Error == "size")
+    {
+        <div class="error-text">이미지는 8MB 이하여야 합니다.</div>
+    }
+    @if (Error == "type")
+    {
+        <div class="error-text">JPG, PNG, WEBP, GIF 파일만 올릴 수 있습니다.</div>
+    }
+
+    <form method="post" action="/admin/site/about/save" enctype="multipart/form-data" class="form-stack site-admin-form">
+        <section class="card form-card">
+            <label class="form-field">
+                <span class="label">제목</span>
+                <input type="text" name="aboutTitle" class="input" value="@_site.Get(SiteContentKeys.AboutTitle)" maxlength="80" />
+            </label>
+            <label class="form-field">
+                <span class="label">소개 글</span>
+                <textarea name="aboutBody" class="input textarea" rows="5">@_site.Get(SiteContentKeys.AboutBody)</textarea>
+            </label>
+            <label class="form-field">
+                <span class="label">목록 (한 줄에 하나)</span>
+                <textarea name="aboutList" class="input textarea" rows="6">@_site.Get(SiteContentKeys.AboutList)</textarea>
+            </label>
+            <SiteImageField Label="대표 사진" UrlFieldName="aboutImageUrl" FileFieldName="aboutImage" ImageUrl="@_site.Get(SiteContentKeys.AboutImage)" />
+        </section>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">저장</button>
+            <a class="btn btn-secondary" href="/admin/site">취소</a>
+        </div>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public bool Saved { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private SiteContentSnapshot _site = SiteContentSnapshot.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _site = await SiteContent.GetAsync();
+    }
+}

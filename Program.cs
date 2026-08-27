@@ -2,9 +2,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using RotationDating.Web.Components;
 using RotationDating.Web.Data;
 using RotationDating.Web.Models;
@@ -35,6 +37,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "RotationDating.Auth";
         options.ExpireTimeSpan = TimeSpan.FromHours(12);
         options.SlidingExpiration = true;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            var path = context.Request.Path;
+            context.Response.Redirect(
+                path.StartsWithSegments("/admin/site")
+                    ? "/admin/site/login"
+                    : "/login");
+            return Task.CompletedTask;
+        };
         if (!builder.Environment.IsDevelopment())
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     });
@@ -50,7 +61,13 @@ builder.Services.AddSession(options =>
     if (!builder.Environment.IsDevelopment())
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 20 * 1024 * 1024;
+});
 builder.Services.AddScoped<QuestionCardService>();
+builder.Services.AddScoped<SiteContentService>();
+builder.Services.AddScoped<SiteAdminAuthService>();
 builder.Services.AddScoped<SurveyService>();
 builder.Services.AddHttpClient(nameof(SeatMatchingService));
 builder.Services.AddScoped<SeatMatchingService>();
@@ -76,6 +93,8 @@ catch
     dataDir = builder.Environment.ContentRootPath;
 }
 var dbPath = Path.Combine(dataDir, "rotationdating.db");
+builder.Services.AddSingleton(new SiteStorageOptions { RootPath = dataDir });
+builder.Services.AddSingleton<SiteUploadService>();
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
@@ -88,6 +107,8 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();
     await DatabaseInitializer.InitializeAsync(db);
     await scope.ServiceProvider.GetRequiredService<ParticipantConsentService>().EnsureSeededAsync(db);
+    await scope.ServiceProvider.GetRequiredService<SiteContentService>().EnsureSeededAsync();
+    await scope.ServiceProvider.GetRequiredService<SiteAdminAuthService>().EnsureSeededAsync();
 }
 
 if (!app.Environment.IsDevelopment())
@@ -96,6 +117,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+var uploadRoot = Path.Combine(dataDir, "uploads");
+Directory.CreateDirectory(uploadRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadRoot),
+    RequestPath = "/uploads"
+});
 app.UseAntiforgery();
 app.UseSession();
 app.UseAuthentication();
@@ -103,13 +131,16 @@ app.UseAuthorization();
 
 app.MapGet("/ping", () => Results.Text("ok", "text/plain"));
 
-app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? password, HttpContext context, IDbContextFactory<AppDbContext> dbFactory, ParticipantConsentService consentService) =>
+app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? password, [FromForm] string? returnUrl, HttpContext context, IDbContextFactory<AppDbContext> dbFactory, ParticipantConsentService consentService) =>
 {
     if (string.IsNullOrWhiteSpace(username))
         return InvalidLoginResponse();
 
     var name = username.Trim();
     var trimmedPassword = string.IsNullOrWhiteSpace(password) ? null : password.Trim();
+
+    if (string.Equals(name, SiteAdminAuthService.UserName, StringComparison.OrdinalIgnoreCase))
+        return InvalidLoginResponse();
 
     if (AuthRoles.IsAdmin(name))
     {
@@ -271,10 +302,10 @@ app.MapGet("/force-logout", async (HttpContext context) =>
     return InvalidLoginResponse();
 });
 
-app.MapPost("/logout", async (HttpContext context) =>
+app.MapPost("/logout", async (HttpContext context, [FromForm] string? next) =>
 {
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Redirect("/login");
+    return Results.Redirect(next == "/" ? "/" : "/login");
 }).DisableAntiforgery();
 
 app.MapPost("/participants/delete", async ([FromForm] int participantId, [FromForm] int eventId, IDbContextFactory<AppDbContext> dbFactory) =>
@@ -1277,6 +1308,8 @@ app.MapPost("/admin/mail-notify/check-now", async (NaverImapMailMonitor mailMoni
         return Results.Redirect("/admin/mail-notify?error=imap");
     }
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
+
+SiteAdminEndpoints.Map(app);
 
 app.MapRazorComponents<App>();
 

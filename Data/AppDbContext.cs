@@ -19,6 +19,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
     public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
     public DbSet<VenueConsentSetting> ConsentSettings => Set<VenueConsentSetting>();
+    public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
+    public DbSet<SiteSection> SiteSections => Set<SiteSection>();
+    public DbSet<SiteFeatureCard> SiteFeatureCards => Set<SiteFeatureCard>();
+    public DbSet<SiteGalleryItem> SiteGalleryItems => Set<SiteGalleryItem>();
+    public DbSet<SiteFaqItem> SiteFaqItems => Set<SiteFaqItem>();
+    public DbSet<SitePost> SitePosts => Set<SitePost>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -187,6 +193,59 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(s => s.Title).HasMaxLength(200).IsRequired();
             entity.Property(s => s.Content).HasMaxLength(8000).IsRequired();
             entity.HasIndex(s => s.VenueKey).IsUnique();
+        });
+
+        modelBuilder.Entity<SiteSetting>(entity =>
+        {
+            entity.Property(s => s.Key).HasMaxLength(80).IsRequired();
+            entity.Property(s => s.Value).HasMaxLength(8000).IsRequired();
+            entity.HasIndex(s => s.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<SiteSection>(entity =>
+        {
+            entity.Property(s => s.Heading).HasMaxLength(200).IsRequired();
+            entity.Property(s => s.Title).HasMaxLength(400).IsRequired();
+            entity.Property(s => s.Body).HasMaxLength(4000).IsRequired();
+            entity.Property(s => s.ImageUrl1).HasMaxLength(1000).IsRequired();
+            entity.Property(s => s.ImageUrl2).HasMaxLength(1000).IsRequired();
+            entity.Property(s => s.ImageAlt1).HasMaxLength(200).IsRequired();
+            entity.Property(s => s.ImageAlt2).HasMaxLength(200).IsRequired();
+            entity.HasIndex(s => s.SortOrder);
+        });
+
+        modelBuilder.Entity<SiteFeatureCard>(entity =>
+        {
+            entity.Property(c => c.Eyebrow).HasMaxLength(200).IsRequired();
+            entity.Property(c => c.Title).HasMaxLength(200).IsRequired();
+            entity.Property(c => c.Pill).HasMaxLength(80).IsRequired();
+            entity.Property(c => c.ImageUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(c => c.LinkUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(c => c.Variant).HasMaxLength(20).IsRequired();
+            entity.HasIndex(c => c.SortOrder);
+        });
+
+        modelBuilder.Entity<SiteGalleryItem>(entity =>
+        {
+            entity.Property(g => g.Category).HasMaxLength(80).IsRequired();
+            entity.Property(g => g.Caption).HasMaxLength(200).IsRequired();
+            entity.Property(g => g.ImageUrl).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(g => g.SortOrder);
+        });
+
+        modelBuilder.Entity<SiteFaqItem>(entity =>
+        {
+            entity.Property(f => f.Question).HasMaxLength(300).IsRequired();
+            entity.Property(f => f.Answer).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(f => f.SortOrder);
+        });
+
+        modelBuilder.Entity<SitePost>(entity =>
+        {
+            entity.Property(p => p.Title).HasMaxLength(200).IsRequired();
+            entity.Property(p => p.Body).HasMaxLength(8000).IsRequired();
+            entity.Property(p => p.ImageUrl).HasMaxLength(1000);
+            entity.HasIndex(p => p.SortOrder);
         });
     }
 }

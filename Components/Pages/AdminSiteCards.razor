@@ -1,0 +1,131 @@
+@page "/admin/site/cards"
+@layout Layout.SiteLayout
+@attribute [Authorize(Roles = "SiteAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using RotationDating.Web.Services
+@inject SiteContentService SiteContent
+
+<PageTitle>바로가기 카드</PageTitle>
+
+<div class="ssf-admin-page">
+    <header class="page-header">
+        <a href="/admin/site" class="back-link">← 홈페이지 관리</a>
+        <p class="ssf-admin-eyebrow">SSF</p>
+        <h1>바로가기 카드</h1>
+        <span class="ssf-accent-line" aria-hidden="true"></span>
+        <p class="subtitle">스마트스토어, 수업 신청처럼 큰 카드</p>
+    </header>
+
+    @if (Saved)
+    {
+        <div class="alert-success">저장되었습니다.</div>
+    }
+    @if (Deleted)
+    {
+        <div class="alert-success">삭제되었습니다.</div>
+    }
+    @if (Error == "size")
+    {
+        <div class="error-text">이미지는 8MB 이하여야 합니다.</div>
+    }
+    @if (Error == "type")
+    {
+        <div class="error-text">JPG, PNG, WEBP, GIF 파일만 올릴 수 있습니다.</div>
+    }
+
+    @foreach (var card in _site.FeatureCards)
+    {
+        <form method="post"
+              action="/admin/site/cards/save"
+              enctype="multipart/form-data"
+              class="card form-card site-admin-item @(SavedId == card.Id ? "saved" : "")"
+              id="item-@card.Id">
+            <input type="hidden" name="id" value="@card.Id" />
+            <div class="site-admin-item-head">
+                <strong>카드 @card.SortOrder</strong>
+                <div class="site-admin-item-actions">
+                    <button type="submit" formaction="/admin/site/cards/move" formnovalidate name="direction" value="up" class="btn btn-sm btn-secondary">위로</button>
+                    <button type="submit" formaction="/admin/site/cards/move" formnovalidate name="direction" value="down" class="btn btn-sm btn-secondary">아래로</button>
+                    <button type="submit" formaction="/admin/site/cards/delete" formnovalidate class="btn btn-sm btn-danger" onclick="return confirm('이 카드를 삭제할까요?');">삭제</button>
+                </div>
+            </div>
+            <label class="form-field">
+                <span class="label">작은 제목</span>
+                <input type="text" name="eyebrow" class="input" value="@card.Eyebrow" maxlength="200" />
+            </label>
+            <label class="form-field">
+                <span class="label">제목</span>
+                <input type="text" name="title" class="input" value="@card.Title" maxlength="200" />
+            </label>
+            <label class="form-field">
+                <span class="label">배지 문구</span>
+                <input type="text" name="pill" class="input" value="@card.Pill" maxlength="80" />
+            </label>
+            <label class="form-field">
+                <span class="label">링크</span>
+                <input type="url" name="linkUrl" class="input" value="@card.LinkUrl" maxlength="1000" />
+            </label>
+            <label class="form-field">
+                <span class="label">스타일</span>
+                <select name="variant" class="input">
+                    @if (card.Variant == "class")
+                    {
+                        <option value="store">스토어</option>
+                        <option value="class" selected>수업</option>
+                    }
+                    else
+                    {
+                        <option value="store" selected>스토어</option>
+                        <option value="class">수업</option>
+                    }
+                </select>
+            </label>
+            <SiteImageField ImageUrl="@card.ImageUrl" />
+            <button type="submit" class="btn btn-primary">이 카드 저장</button>
+        </form>
+    }
+
+    <form method="post" action="/admin/site/cards/add" enctype="multipart/form-data" class="card form-card site-admin-item">
+        <h2>카드 추가</h2>
+        <label class="form-field">
+            <span class="label">작은 제목</span>
+            <input type="text" name="eyebrow" class="input" maxlength="200" />
+        </label>
+        <label class="form-field">
+            <span class="label">제목</span>
+            <input type="text" name="title" class="input" maxlength="200" />
+        </label>
+        <label class="form-field">
+            <span class="label">배지 문구</span>
+            <input type="text" name="pill" class="input" maxlength="80" />
+        </label>
+        <label class="form-field">
+            <span class="label">링크</span>
+            <input type="url" name="linkUrl" class="input" maxlength="1000" />
+        </label>
+        <label class="form-field">
+            <span class="label">스타일</span>
+            <select name="variant" class="input">
+                <option value="store">스토어</option>
+                <option value="class">수업</option>
+            </select>
+        </label>
+        <SiteImageField />
+        <button type="submit" class="btn btn-primary">추가</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public bool Saved { get; set; }
+    [SupplyParameterFromQuery] public bool Deleted { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public int? Id { get; set; }
+
+    private SiteContentSnapshot _site = SiteContentSnapshot.Empty;
+    private int? SavedId => Saved ? Id : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _site = await SiteContent.GetAsync();
+    }
+}

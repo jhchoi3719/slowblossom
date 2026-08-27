@@ -1,0 +1,135 @@
+@page "/admin/site"
+@layout Layout.SiteLayout
+@attribute [Authorize(Roles = "SiteAdmin")]
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>홈페이지 관리</PageTitle>
+
+<div class="ssf-admin-page">
+    <header class="page-header">
+        <a href="/" class="back-link">← 홈페이지</a>
+        <p class="ssf-admin-eyebrow">SSF</p>
+        <h1>홈페이지 관리</h1>
+        <span class="ssf-accent-line" aria-hidden="true"></span>
+        <p class="subtitle">카드, 사진, About, FAQ, 게시글을 직접 수정합니다</p>
+    </header>
+
+    <div class="menu-list">
+        <a href="/admin/site/basic" class="menu-card">
+            <span class="menu-icon-badge tone-teal">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="4" y="5" width="16" height="14" rx="2" />
+                    <path d="M4 9h16" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">기본 정보</span>
+                <span class="menu-desc">메인 비주얼, 안내문, 링크, 푸터</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+
+        <a href="/admin/site/sections" class="menu-card">
+            <span class="menu-icon-badge tone-stone">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3.5" y="5" width="7.5" height="14" rx="1.5" />
+                    <path d="M14 8h6.5M14 12h6.5M14 16h4" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">소개 섹션</span>
+                <span class="menu-desc">사진 2장 + 안내 문구 블록</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+
+        <a href="/admin/site/cards" class="menu-card">
+            <span class="menu-icon-badge tone-blue">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3.5" y="6" width="7.5" height="12" rx="1.5" />
+                    <rect x="13" y="6" width="7.5" height="12" rx="1.5" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">바로가기 카드</span>
+                <span class="menu-desc">스마트스토어, 수업 신청 카드</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+
+        <a href="/admin/site/gallery" class="menu-card">
+            <span class="menu-icon-badge tone-rose">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="4" y="5" width="16" height="14" rx="2" />
+                    <circle cx="9" cy="10" r="1.6" />
+                    <path d="m8 16 3.2-3.2 2.3 2.3L17 12l3 4" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">갤러리 사진</span>
+                <span class="menu-desc">분류, 캡션, 사진 추가·수정</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+
+        <a href="/admin/site/about" class="menu-card">
+            <span class="menu-icon-badge tone-stone">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8" />
+                    <path d="M12 11v5M12 8.2h.01" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">About</span>
+                <span class="menu-desc">소개 글, 목록, 대표 사진</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+
+        <a href="/admin/site/faq" class="menu-card">
+            <span class="menu-icon-badge tone-blue">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7.5 18.5 4.8 21v-3.2A7.7 7.7 0 0 1 4 13.2C4 8.4 7.8 4.8 12 4.8s8 3.6 8 8.4-3.8 8.4-8 8.4c-1.1 0-2.2-.2-3.2-.6" />
+                    <path d="M9.8 10.2c.4-1.1 1.3-1.7 2.4-1.7 1.4 0 2.3.8 2.3 2 0 1.3-1.1 1.7-1.9 2.1-.7.4-1 .8-1 1.6M12 16.2h.01" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">FAQ</span>
+                <span class="menu-desc">자주 묻는 질문 추가·수정</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+
+        <a href="/admin/site/posts" class="menu-card">
+            <span class="menu-icon-badge tone-teal">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
+                    <path d="M9 8.5h6M9 12.5h6M9 16.5h4" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">게시글</span>
+                <span class="menu-desc">홈페이지 소식 글 작성</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+
+        <a href="/admin/site/password" class="menu-card">
+            <span class="menu-icon-badge tone-stone">
+                <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="5" y="11" width="14" height="9" rx="2" />
+                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                </svg>
+            </span>
+            <div class="menu-text">
+                <span class="menu-title">비밀번호 변경</span>
+                <span class="menu-desc">관리자 로그인 비밀번호 수정</span>
+            </div>
+            <span class="menu-arrow">›</span>
+        </a>
+    </div>
+
+    <p class="form-help site-admin-preview-link">
+        <a href="/" target="_blank" rel="noopener noreferrer">홈페이지에서 확인 →</a>
+    </p>
+</div>
