@@ -17,6 +17,16 @@ public sealed class MailNotificationBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Let the web process finish health checks and DB init before IMAP work.
+        try
+        {
+            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             var delaySeconds = 60;
@@ -29,7 +39,7 @@ public sealed class MailNotificationBackgroundService : BackgroundService
                 var settings = await settingsProvider.GetEffectiveSettingsAsync(stoppingToken);
                 delaySeconds = Math.Clamp(settings.PollIntervalSeconds, 30, 600);
 
-                if (await monitor.IsConfiguredAsync(stoppingToken))
+                if (settings.Enabled && await monitor.IsConfiguredAsync(stoppingToken))
                 {
                     var count = await monitor.CheckAsync(stoppingToken);
                     if (count > 0)

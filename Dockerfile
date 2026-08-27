@@ -11,9 +11,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/*
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_HTTP_PORTS=8080
 ENV DOTNET_RUNNING_IN_CONTAINER=true
 ENV DOTNET_gcServer=0
+ENV DOTNET_GCConserveMemory=9
+ENV DOTNET_EnableDiagnostics=0
 COPY --from=build /app/publish .
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/tini", "--", "dotnet", "RotationDating.Web.dll"]

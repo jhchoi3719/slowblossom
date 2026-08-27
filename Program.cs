@@ -16,8 +16,11 @@ using RotationDating.Web.Services.MailNotification;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render injects PORT. Clear conflicting ASP.NET port env so Kestrel binds only there.
+Environment.SetEnvironmentVariable("ASPNETCORE_HTTP_PORTS", null);
+Environment.SetEnvironmentVariable("ASPNETCORE_HTTPS_PORTS", null);
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+builder.WebHost.UseUrls($"http://+:{port}");
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -1313,6 +1316,7 @@ app.MapRazorComponents<App>();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {
+    app.Logger.LogInformation("Listening on PORT={Port}. Starting background database init.", port);
     _ = InitializeSiteDataAsync();
 });
 
@@ -1322,6 +1326,7 @@ async Task InitializeSiteDataAsync()
 {
     try
     {
+        await Task.Yield();
         await using var scope = app.Services.CreateAsyncScope();
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -1329,6 +1334,7 @@ async Task InitializeSiteDataAsync()
         await scope.ServiceProvider.GetRequiredService<ParticipantConsentService>().EnsureSeededAsync(db);
         await scope.ServiceProvider.GetRequiredService<SiteContentService>().EnsureSeededAsync();
         await scope.ServiceProvider.GetRequiredService<SiteAdminAuthService>().EnsureSeededAsync();
+        app.Logger.LogInformation("Database initialization completed.");
     }
     catch (Exception ex)
     {
