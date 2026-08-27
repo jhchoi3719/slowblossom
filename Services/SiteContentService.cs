@@ -33,6 +33,9 @@ public sealed class SiteContentService(IDbContextFactory<AppDbContext> dbFactory
             Posts = await db.SitePosts.AsNoTracking()
                 .Where(p => p.IsPublished)
                 .OrderBy(p => p.SortOrder).ThenByDescending(p => p.CreatedAt)
+                .ToListAsync(),
+            AboutPeople = await db.SiteAboutPeople.AsNoTracking()
+                .OrderBy(p => p.SortOrder).ThenBy(p => p.Id)
                 .ToListAsync()
         };
         return _cached;

@@ -11,7 +11,8 @@ public sealed class SiteContentSnapshot
         FeatureCards = [],
         GalleryItems = [],
         FaqItems = [],
-        Posts = []
+        Posts = [],
+        AboutPeople = []
     };
 
     public required Dictionary<string, string> Settings { get; init; }
@@ -20,6 +21,7 @@ public sealed class SiteContentSnapshot
     public required List<SiteGalleryItem> GalleryItems { get; init; }
     public required List<SiteFaqItem> FaqItems { get; init; }
     public required List<SitePost> Posts { get; init; }
+    public required List<SiteAboutPerson> AboutPeople { get; init; }
 
     public string Get(string key, string fallback = "") =>
         Settings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)

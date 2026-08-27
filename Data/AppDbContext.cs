@@ -25,6 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SiteGalleryItem> SiteGalleryItems => Set<SiteGalleryItem>();
     public DbSet<SiteFaqItem> SiteFaqItems => Set<SiteFaqItem>();
     public DbSet<SitePost> SitePosts => Set<SitePost>();
+    public DbSet<SiteAboutPerson> SiteAboutPeople => Set<SiteAboutPerson>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -245,6 +246,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(p => p.Title).HasMaxLength(200).IsRequired();
             entity.Property(p => p.Body).HasMaxLength(8000).IsRequired();
             entity.Property(p => p.ImageUrl).HasMaxLength(1000);
+            entity.HasIndex(p => p.SortOrder);
+        });
+
+        modelBuilder.Entity<SiteAboutPerson>(entity =>
+        {
+            entity.ToTable("SiteAboutPeople");
+            entity.Property(p => p.Title).HasMaxLength(80).IsRequired();
+            entity.Property(p => p.Body).HasMaxLength(2000).IsRequired();
+            entity.Property(p => p.ListText).HasMaxLength(2000).IsRequired();
+            entity.Property(p => p.ImageUrl).HasMaxLength(1000).IsRequired();
             entity.HasIndex(p => p.SortOrder);
         });
     }

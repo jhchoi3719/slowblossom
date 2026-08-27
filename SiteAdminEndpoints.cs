@@ -24,6 +24,10 @@ public static class SiteAdminEndpoints
 
         admin.MapPost("/basic/save", SaveBasicAsync);
         admin.MapPost("/about/save", SaveAboutAsync);
+        admin.MapPost("/about/people/save", SaveAboutPersonAsync);
+        admin.MapPost("/about/people/add", AddAboutPersonAsync);
+        admin.MapPost("/about/people/delete", DeleteEntityAsync<SiteAboutPerson>("/admin/site/about"));
+        admin.MapPost("/about/people/move", MoveEntityAsync<SiteAboutPerson>("/admin/site/about"));
 
         admin.MapPost("/sections/save", SaveSectionAsync);
         admin.MapPost("/sections/add", AddSectionAsync);
@@ -143,6 +147,63 @@ public static class SiteAdminEndpoints
         Upsert(settings, db, SiteContentKeys.AboutImage, image);
         await db.SaveChangesAsync();
         return RedirectSaved("/admin/site/about", imageError);
+    }
+
+    private static async Task<IResult> SaveAboutPersonAsync(
+        HttpContext context,
+        IDbContextFactory<AppDbContext> dbFactory,
+        SiteUploadService uploads)
+    {
+        var form = await context.Request.ReadFormAsync();
+        if (!TryId(form, out var id))
+            return Results.Redirect("/admin/site/about");
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var item = await db.SiteAboutPeople.FindAsync(id);
+        if (item is null)
+            return Results.Redirect("/admin/site/about");
+
+        var title = Clip(form["title"], 80);
+        if (string.IsNullOrWhiteSpace(title))
+            return Results.Redirect($"/admin/site/about?error=empty&id={id}");
+
+        var (image, error) = await uploads.ResolveImageAsync(
+            form.Files.GetFile("image"),
+            form["imageUrl"],
+            item.ImageUrl);
+        ApplyAboutPerson(item, form, title, image);
+        await db.SaveChangesAsync();
+        return RedirectSaved("/admin/site/about", error, id);
+    }
+
+    private static async Task<IResult> AddAboutPersonAsync(
+        HttpContext context,
+        IDbContextFactory<AppDbContext> dbFactory,
+        SiteUploadService uploads)
+    {
+        var form = await context.Request.ReadFormAsync();
+        var title = Clip(form["title"], 80);
+        if (string.IsNullOrWhiteSpace(title))
+            return Results.Redirect("/admin/site/about?error=empty");
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var (image, error) = await uploads.ResolveImageAsync(
+            form.Files.GetFile("image"),
+            form["imageUrl"],
+            "");
+        var item = new SiteAboutPerson { SortOrder = await NextSortAsync<SiteAboutPerson>(db) };
+        ApplyAboutPerson(item, form, title, image);
+        db.SiteAboutPeople.Add(item);
+        await db.SaveChangesAsync();
+        return RedirectSaved("/admin/site/about", error, item.Id);
+    }
+
+    private static void ApplyAboutPerson(SiteAboutPerson item, IFormCollection form, string title, string image)
+    {
+        item.Title = title;
+        item.Body = Clip(form["body"], 2000);
+        item.ListText = Clip(form["listText"], 2000);
+        item.ImageUrl = image;
     }
 
     private static async Task<IResult> SaveSectionAsync(

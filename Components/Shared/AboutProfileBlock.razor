@@ -1,0 +1,36 @@
+<div class="ssf-about-grid @(IsReversed ? "ssf-about-grid-reverse" : "")">
+    @if (!string.IsNullOrWhiteSpace(ImageUrl))
+    {
+        <div class="ssf-about-photo">
+            <img src="@ImageUrl" alt="@Title" />
+        </div>
+    }
+    <div class="ssf-about-copy">
+        @if (ShowTitle && !string.IsNullOrWhiteSpace(Title))
+        {
+            <h2 class="ssf-serif-heading">@Title</h2>
+        }
+        @if (!string.IsNullOrWhiteSpace(Body))
+        {
+            <p>@Body</p>
+        }
+        @if (Items.Count > 0)
+        {
+            <ul class="ssf-about-list">
+                @foreach (var line in Items)
+                {
+                    <li>@line</li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Body { get; set; } = "";
+    [Parameter] public string? ImageUrl { get; set; }
+    [Parameter] public IReadOnlyList<string> Items { get; set; } = [];
+    [Parameter] public bool ShowTitle { get; set; } = true;
+    [Parameter] public bool IsReversed { get; set; }
+}

@@ -178,8 +178,13 @@ html:has(.site-shell) body {
     color: var(--ssf-text);
 }
 
-.site-nav-link:hover {
+.site-nav-link:hover,
+.site-nav-link.active {
     border-bottom-color: var(--ssf-pink);
+}
+
+.site-nav-link.active {
+    color: var(--ssf-text);
 }
 
 button.site-nav-logout {
@@ -889,6 +894,33 @@ button.site-nav-logout {
     color: var(--ssf-text);
 }
 
+.ssf-about-page {
+    padding: 64px 0 112px;
+    background: var(--ssf-bg);
+}
+
+.ssf-page-intro {
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+.ssf-page-intro .ssf-serif-heading {
+    margin-bottom: 16px;
+}
+
+.ssf-page-eyebrow {
+    margin: 0 0 10px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ssf-muted);
+}
+
+.ssf-accent-line-center {
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .ssf-about-profile {
     padding: 72px 0;
     background: var(--ssf-bg);
@@ -899,6 +931,51 @@ button.site-nav-logout {
     grid-template-columns: 0.9fr 1.1fr;
     gap: 40px;
     align-items: center;
+}
+
+.ssf-about-grid:not(:has(.ssf-about-photo)) {
+    grid-template-columns: 1fr;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.ssf-about-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+}
+
+.ssf-about-grid-reverse {
+    grid-template-columns: 1.1fr 0.9fr;
+}
+
+.ssf-about-grid-reverse .ssf-about-photo {
+    order: 2;
+}
+
+.ssf-about-people-heading {
+    text-align: center;
+    margin: 0 0 36px;
+}
+
+.ssf-about-copy .ssf-serif-heading {
+    margin-bottom: 14px;
+}
+
+.ssf-admin-section-head {
+    margin: 40px 0 16px;
+}
+
+.ssf-admin-section-head h2 {
+    margin: 0 0 6px;
+    font-family: var(--ssf-serif);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.ssf-admin-section-head .subtitle {
+    margin: 0;
 }
 
 .ssf-about-copy p {
@@ -1188,9 +1265,14 @@ button.site-nav-logout {
     .ssf-split-layout,
     .ssf-split-reverse,
     .ssf-about-grid,
+    .ssf-about-grid-reverse,
     .ssf-gallery-grid,
     .ssf-news-card {
         grid-template-columns: 1fr;
+    }
+
+    .ssf-about-grid-reverse .ssf-about-photo {
+        order: 0;
     }
 
     .ssf-serif-heading-right {

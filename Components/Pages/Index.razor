@@ -19,7 +19,7 @@
 {
     var block = _site.Sections[i];
     var isAlt = i % 2 == 1;
-    <section class="ssf-split-section @(isAlt ? "ssf-split-alt" : "")" id="@(i == 0 ? "about" : null)">
+    <section class="ssf-split-section @(isAlt ? "ssf-split-alt" : "")">
         <div class="ssf-container">
             <h2 class="ssf-serif-heading">@block.Heading</h2>
             <div class="ssf-split-layout @(block.IsReversed ? "ssf-split-reverse" : "")">
@@ -144,27 +144,6 @@
         </div>
     </section>
 }
-
-<section class="ssf-about-profile" id="@(_site.Sections.Count == 0 ? "about" : null)">
-    <div class="ssf-container ssf-about-grid">
-        @if (!string.IsNullOrWhiteSpace(_site.Get(SiteContentKeys.AboutImage)))
-        {
-            <div class="ssf-about-photo">
-                <img src="@_site.Get(SiteContentKeys.AboutImage)" alt="@_site.Get(SiteContentKeys.AboutTitle)" />
-            </div>
-        }
-        <div class="ssf-about-copy">
-            <h2 class="ssf-serif-heading">@_site.Get(SiteContentKeys.AboutTitle)</h2>
-            <p>@_site.Get(SiteContentKeys.AboutBody)</p>
-            <ul class="ssf-about-list">
-                @foreach (var line in _site.AboutItems)
-                {
-                    <li>@line</li>
-                }
-            </ul>
-        </div>
-    </div>
-</section>
 
 @if (_site.FaqItems.Count > 0)
 {

@@ -13,12 +13,16 @@
         <p class="ssf-admin-eyebrow">SSF</p>
         <h1>About</h1>
         <span class="ssf-accent-line" aria-hidden="true"></span>
-        <p class="subtitle">소개 글과 대표 사진</p>
+        <p class="subtitle">소개 글과 대표자 소개 · 별도 About 페이지에 표시됩니다</p>
     </header>
 
     @if (Saved)
     {
         <div class="alert-success">저장되었습니다.</div>
+    }
+    @if (Deleted)
+    {
+        <div class="alert-success">삭제되었습니다.</div>
     }
     @if (Error == "size")
     {
@@ -28,9 +32,14 @@
     {
         <div class="error-text">JPG, PNG, WEBP, GIF 파일만 올릴 수 있습니다.</div>
     }
+    @if (Error == "empty")
+    {
+        <div class="error-text">대표자 이름을 입력해 주세요.</div>
+    }
 
     <form method="post" action="/admin/site/about/save" enctype="multipart/form-data" class="form-stack site-admin-form">
         <section class="card form-card">
+            <h2>소개</h2>
             <label class="form-field">
                 <span class="label">제목</span>
                 <input type="text" name="aboutTitle" class="input" value="@_site.Get(SiteContentKeys.AboutTitle)" maxlength="80" />
@@ -47,17 +56,79 @@
         </section>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">저장</button>
-            <a class="btn btn-secondary" href="/admin/site">취소</a>
+            <button type="submit" class="btn btn-primary">소개 저장</button>
         </div>
     </form>
+
+    <header class="ssf-admin-section-head">
+        <h2>대표자 소개</h2>
+        <p class="subtitle">소개와 같은 형식(사진, 제목, 글, 목록)으로 여러 명을 넣을 수 있습니다</p>
+    </header>
+
+    @foreach (var person in _site.AboutPeople)
+    {
+        <form method="post"
+              action="/admin/site/about/people/save"
+              enctype="multipart/form-data"
+              class="card form-card site-admin-item @(SavedId == person.Id ? "saved" : "")"
+              id="item-@person.Id">
+            <input type="hidden" name="id" value="@person.Id" />
+            <div class="site-admin-item-head">
+                <strong>@(string.IsNullOrWhiteSpace(person.Title) ? $"대표자 {person.SortOrder}" : person.Title)</strong>
+                <div class="site-admin-item-actions">
+                    <button type="submit" formaction="/admin/site/about/people/move" formnovalidate name="direction" value="up" class="btn btn-sm btn-secondary">위로</button>
+                    <button type="submit" formaction="/admin/site/about/people/move" formnovalidate name="direction" value="down" class="btn btn-sm btn-secondary">아래로</button>
+                    <button type="submit" formaction="/admin/site/about/people/delete" formnovalidate class="btn btn-sm btn-danger" onclick="return confirm('이 소개를 삭제할까요?');">삭제</button>
+                </div>
+            </div>
+            <label class="form-field">
+                <span class="label">이름 / 제목</span>
+                <input type="text" name="title" class="input" value="@person.Title" maxlength="80" required />
+            </label>
+            <label class="form-field">
+                <span class="label">소개 글</span>
+                <textarea name="body" class="input textarea" rows="5">@person.Body</textarea>
+            </label>
+            <label class="form-field">
+                <span class="label">목록 (한 줄에 하나)</span>
+                <textarea name="listText" class="input textarea" rows="6">@person.ListText</textarea>
+            </label>
+            <SiteImageField Label="사진" UrlFieldName="imageUrl" FileFieldName="image" ImageUrl="@person.ImageUrl" />
+            <button type="submit" class="btn btn-primary">이 소개 저장</button>
+        </form>
+    }
+
+    <form method="post" action="/admin/site/about/people/add" enctype="multipart/form-data" class="card form-card site-admin-item">
+        <h2>대표자 추가</h2>
+        <label class="form-field">
+            <span class="label">이름 / 제목</span>
+            <input type="text" name="title" class="input" maxlength="80" required />
+        </label>
+        <label class="form-field">
+            <span class="label">소개 글</span>
+            <textarea name="body" class="input textarea" rows="5"></textarea>
+        </label>
+        <label class="form-field">
+            <span class="label">목록 (한 줄에 하나)</span>
+            <textarea name="listText" class="input textarea" rows="6"></textarea>
+        </label>
+        <SiteImageField Label="사진" UrlFieldName="imageUrl" FileFieldName="image" />
+        <button type="submit" class="btn btn-primary">추가</button>
+    </form>
+
+    <p class="form-help site-admin-preview-link">
+        <a href="/about" target="_blank" rel="noopener noreferrer">About 페이지에서 확인 →</a>
+    </p>
 </div>
 
 @code {
     [SupplyParameterFromQuery] public bool Saved { get; set; }
+    [SupplyParameterFromQuery] public bool Deleted { get; set; }
     [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public int? Id { get; set; }
 
     private SiteContentSnapshot _site = SiteContentSnapshot.Empty;
+    private int? SavedId => Saved ? Id : null;
 
     protected override async Task OnInitializedAsync()
     {

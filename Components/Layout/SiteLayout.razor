@@ -46,8 +46,8 @@
         </div>
 
         <nav class="site-nav" id="site-nav" aria-label="주요 메뉴">
-            <a href="/#top" class="site-nav-link">SSF</a>
-            <a href="/#about" class="site-nav-link">About</a>
+            <NavLink href="/" class="site-nav-link" Match="NavLinkMatch.All">SSF</NavLink>
+            <NavLink href="/about" class="site-nav-link">About</NavLink>
             @if (_hasGallery)
             {
                 <a href="/#gallery" class="site-nav-link">Gallery</a>
@@ -101,8 +101,8 @@
                 }
             </div>
             <div class="site-footer-links">
-                <a href="/#top">SSF</a>
-                <a href="/#about">About</a>
+                <a href="/">SSF</a>
+                <a href="/about">About</a>
                 @if (_hasGallery)
                 {
                     <a href="/#gallery">Gallery</a>
