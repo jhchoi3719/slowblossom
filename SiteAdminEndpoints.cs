@@ -130,23 +130,15 @@ public static class SiteAdminEndpoints
 
     private static async Task<IResult> SaveAboutAsync(
         HttpContext context,
-        IDbContextFactory<AppDbContext> dbFactory,
-        SiteUploadService uploads)
+        IDbContextFactory<AppDbContext> dbFactory)
     {
         var form = await context.Request.ReadFormAsync();
         await using var db = await dbFactory.CreateDbContextAsync();
         var settings = await db.SiteSettings.ToListAsync();
-        var (image, imageError) = await uploads.ResolveImageAsync(
-            form.Files.GetFile("aboutImage"),
-            form["aboutImageUrl"],
-            GetSetting(settings, SiteContentKeys.AboutImage));
 
         Upsert(settings, db, SiteContentKeys.AboutTitle, Clip(form["aboutTitle"], 80));
-        Upsert(settings, db, SiteContentKeys.AboutBody, Clip(form["aboutBody"], 2000));
-        Upsert(settings, db, SiteContentKeys.AboutList, Clip(form["aboutList"], 2000));
-        Upsert(settings, db, SiteContentKeys.AboutImage, image);
         await db.SaveChangesAsync();
-        return RedirectSaved("/admin/site/about", imageError);
+        return RedirectSaved("/admin/site/about", null);
     }
 
     private static async Task<IResult> SaveAboutPersonAsync(

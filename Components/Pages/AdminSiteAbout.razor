@@ -13,7 +13,7 @@
         <p class="ssf-admin-eyebrow">SSF</p>
         <h1>About</h1>
         <span class="ssf-accent-line" aria-hidden="true"></span>
-        <p class="subtitle">소개 글과 대표자 소개 · 별도 About 페이지에 표시됩니다</p>
+        <p class="subtitle">대표자 소개를 여러 명 추가·수정합니다</p>
     </header>
 
     @if (Saved)
@@ -37,32 +37,22 @@
         <div class="error-text">대표자 이름을 입력해 주세요.</div>
     }
 
-    <form method="post" action="/admin/site/about/save" enctype="multipart/form-data" class="form-stack site-admin-form">
+    <form method="post" action="/admin/site/about/save" class="form-stack site-admin-form">
         <section class="card form-card">
-            <h2>소개</h2>
+            <h2>페이지 제목</h2>
             <label class="form-field">
                 <span class="label">제목</span>
                 <input type="text" name="aboutTitle" class="input" value="@_site.Get(SiteContentKeys.AboutTitle)" maxlength="80" />
             </label>
-            <label class="form-field">
-                <span class="label">소개 글</span>
-                <textarea name="aboutBody" class="input textarea" rows="5">@_site.Get(SiteContentKeys.AboutBody)</textarea>
-            </label>
-            <label class="form-field">
-                <span class="label">목록 (한 줄에 하나)</span>
-                <textarea name="aboutList" class="input textarea" rows="6">@_site.Get(SiteContentKeys.AboutList)</textarea>
-            </label>
-            <SiteImageField Label="대표 사진" UrlFieldName="aboutImageUrl" FileFieldName="aboutImage" ImageUrl="@_site.Get(SiteContentKeys.AboutImage)" />
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">제목 저장</button>
+            </div>
         </section>
-
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">소개 저장</button>
-        </div>
     </form>
 
     <header class="ssf-admin-section-head">
         <h2>대표자 소개</h2>
-        <p class="subtitle">소개와 같은 형식(사진, 제목, 글, 목록)으로 여러 명을 넣을 수 있습니다</p>
+        <p class="subtitle">사진, 이름, 소개 글, 이력 목록을 여러 명 등록할 수 있습니다</p>
     </header>
 
     @foreach (var person in _site.AboutPeople)
@@ -90,7 +80,7 @@
                 <textarea name="body" class="input textarea" rows="5">@person.Body</textarea>
             </label>
             <label class="form-field">
-                <span class="label">목록 (한 줄에 하나)</span>
+                <span class="label">이력 목록 (한 줄에 하나)</span>
                 <textarea name="listText" class="input textarea" rows="6">@person.ListText</textarea>
             </label>
             <SiteImageField Label="사진" UrlFieldName="imageUrl" FileFieldName="image" ImageUrl="@person.ImageUrl" />
@@ -109,7 +99,7 @@
             <textarea name="body" class="input textarea" rows="5"></textarea>
         </label>
         <label class="form-field">
-            <span class="label">목록 (한 줄에 하나)</span>
+            <span class="label">이력 목록 (한 줄에 하나)</span>
             <textarea name="listText" class="input textarea" rows="6"></textarea>
         </label>
         <SiteImageField Label="사진" UrlFieldName="imageUrl" FileFieldName="image" />

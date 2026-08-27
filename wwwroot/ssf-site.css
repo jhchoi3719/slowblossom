@@ -959,6 +959,13 @@ button.site-nav-logout {
     margin: 0 0 36px;
 }
 
+.ssf-about-empty {
+    margin: 48px 0 0;
+    text-align: center;
+    font-size: 14px;
+    color: var(--ssf-muted);
+}
+
 .ssf-about-copy .ssf-serif-heading {
     margin-bottom: 14px;
 }

@@ -13,54 +13,36 @@
             <span class="ssf-accent-line ssf-accent-line-center" aria-hidden="true"></span>
         </header>
 
-        <div class="ssf-about-stack">
-            @if (_hasIntro)
-            {
-                <AboutProfileBlock Title="@_title"
-                                   Body="@_body"
-                                   ImageUrl="@_image"
-                                   Items="@_site.AboutItems"
-                                   ShowTitle="false" />
-            }
-
-            @if (_site.AboutPeople.Count > 0)
-            {
-                <div class="ssf-about-people">
-                    <h2 class="ssf-serif-heading ssf-about-people-heading">대표 소개</h2>
-                    <div class="ssf-about-stack">
-                        @{ var personIndex = 0; }
-                        @foreach (var person in _site.AboutPeople)
-                        {
-                            var reversed = personIndex % 2 == 0;
-                            personIndex++;
-                            <AboutProfileBlock Title="@person.Title"
-                                               Body="@person.Body"
-                                               ImageUrl="@person.ImageUrl"
-                                               Items="@person.Items"
-                                               IsReversed="@reversed" />
-                        }
-                    </div>
-                </div>
-            }
-        </div>
+        @if (_site.AboutPeople.Count > 0)
+        {
+            <div class="ssf-about-stack">
+                @{ var personIndex = 0; }
+                @foreach (var person in _site.AboutPeople)
+                {
+                    var reversed = personIndex % 2 == 1;
+                    personIndex++;
+                    <AboutProfileBlock Title="@person.Title"
+                                       Body="@person.Body"
+                                       ImageUrl="@person.ImageUrl"
+                                       Items="@person.Items"
+                                       IsReversed="@reversed" />
+                }
+            </div>
+        }
+        else
+        {
+            <p class="ssf-about-empty">등록된 대표자 소개가 없습니다.</p>
+        }
     </div>
 </section>
 
 @code {
     private SiteContentSnapshot _site = SiteContentSnapshot.Empty;
     private string _title = "About";
-    private string _body = "";
-    private string _image = "";
-    private bool _hasIntro;
 
     protected override async Task OnInitializedAsync()
     {
         _site = await SiteContent.GetAsync();
         _title = _site.Get(SiteContentKeys.AboutTitle, "About");
-        _body = _site.Get(SiteContentKeys.AboutBody);
-        _image = _site.Get(SiteContentKeys.AboutImage);
-        _hasIntro = !string.IsNullOrWhiteSpace(_image)
-            || !string.IsNullOrWhiteSpace(_body)
-            || _site.AboutItems.Count > 0;
     }
 }
