@@ -25,6 +25,8 @@ public static class DatabaseInitializer
 
     public static async Task InitializeAsync(AppDbContext db)
     {
+        await db.Database.OpenConnectionAsync();
+        await db.Database.ExecuteSqlRawAsync("PRAGMA busy_timeout=30000;");
         await db.Database.EnsureCreatedAsync();
 
         const string createSql = """
@@ -198,7 +200,11 @@ public static class DatabaseInitializer
                 SortOrder INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS IX_SitePosts_SortOrder ON SitePosts (SortOrder);
+            """;
 
+        await db.Database.ExecuteSqlRawAsync(sql);
+        await db.Database.ExecuteSqlRawAsync(
+            """
             CREATE TABLE IF NOT EXISTS SiteAboutPeople (
                 Id INTEGER NOT NULL CONSTRAINT PK_SiteAboutPeople PRIMARY KEY AUTOINCREMENT,
                 Title TEXT NOT NULL,
@@ -208,9 +214,7 @@ public static class DatabaseInitializer
                 SortOrder INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS IX_SiteAboutPeople_SortOrder ON SiteAboutPeople (SortOrder);
-            """;
-
-        await db.Database.ExecuteSqlRawAsync(sql);
+            """);
     }
 
     private static async Task MigrateSurveyTablesAsync(AppDbContext db)

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using RotationDating.Web.Components;
@@ -95,21 +96,18 @@ catch
 var dbPath = Path.Combine(dataDir, "rotationdating.db");
 builder.Services.AddSingleton(new SiteStorageOptions { RootPath = dataDir });
 builder.Services.AddSingleton<SiteUploadService>();
+var sqlite = new SqliteConnectionStringBuilder
+{
+    DataSource = dbPath,
+    Cache = SqliteCacheMode.Shared,
+    DefaultTimeout = 30
+};
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseSqlite(sqlite.ConnectionString, sqliteOptions => sqliteOptions.CommandTimeout(30)));
 
 var app = builder.Build();
 
 app.UseForwardedHeaders();
-
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();
-    await DatabaseInitializer.InitializeAsync(db);
-    await scope.ServiceProvider.GetRequiredService<ParticipantConsentService>().EnsureSeededAsync(db);
-    await scope.ServiceProvider.GetRequiredService<SiteContentService>().EnsureSeededAsync();
-    await scope.ServiceProvider.GetRequiredService<SiteAdminAuthService>().EnsureSeededAsync();
-}
 
 if (!app.Environment.IsDevelopment())
 {
@@ -1313,7 +1311,30 @@ SiteAdminEndpoints.Map(app);
 
 app.MapRazorComponents<App>();
 
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    _ = InitializeSiteDataAsync();
+});
+
 app.Run();
+
+async Task InitializeSiteDataAsync()
+{
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using var db = await dbFactory.CreateDbContextAsync();
+        await DatabaseInitializer.InitializeAsync(db);
+        await scope.ServiceProvider.GetRequiredService<ParticipantConsentService>().EnsureSeededAsync(db);
+        await scope.ServiceProvider.GetRequiredService<SiteContentService>().EnsureSeededAsync();
+        await scope.ServiceProvider.GetRequiredService<SiteAdminAuthService>().EnsureSeededAsync();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogCritical(ex, "Database initialization failed.");
+    }
+}
 
 static string ApplicationsUrl(EventKind kind, int? eventId = null, string? extraQuery = null, string? fragment = null) =>
     VenueHelper.AdminPageUrl("/applications", VenueHelper.FromEventKind(kind), eventId, extraQuery, fragment);

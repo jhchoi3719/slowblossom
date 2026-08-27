@@ -34,11 +34,23 @@ public sealed class SiteContentService(IDbContextFactory<AppDbContext> dbFactory
                 .Where(p => p.IsPublished)
                 .OrderBy(p => p.SortOrder).ThenByDescending(p => p.CreatedAt)
                 .ToListAsync(),
-            AboutPeople = await db.SiteAboutPeople.AsNoTracking()
-                .OrderBy(p => p.SortOrder).ThenBy(p => p.Id)
-                .ToListAsync()
+            AboutPeople = await LoadAboutPeopleAsync(db)
         };
         return _cached;
+    }
+
+    private static async Task<List<SiteAboutPerson>> LoadAboutPeopleAsync(AppDbContext db)
+    {
+        try
+        {
+            return await db.SiteAboutPeople.AsNoTracking()
+                .OrderBy(p => p.SortOrder).ThenBy(p => p.Id)
+                .ToListAsync();
+        }
+        catch
+        {
+            return [];
+        }
     }
 
     public async Task<List<SitePost>> GetAllPostsAsync()
