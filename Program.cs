@@ -14,11 +14,14 @@ using RotationDating.Web.Models;
 using RotationDating.Web.Services;
 using RotationDating.Web.Services.MailNotification;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Render injects PORT. Clear conflicting ASP.NET port env so Kestrel binds only there.
+// Render free instances hit inotify limits if config/static file watchers are enabled.
+Environment.SetEnvironmentVariable("DOTNET_HOSTBUILDER_RELOADCONFIGONCHANGE", "false");
+Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1");
 Environment.SetEnvironmentVariable("ASPNETCORE_HTTP_PORTS", null);
 Environment.SetEnvironmentVariable("ASPNETCORE_HTTPS_PORTS", null);
+
+var builder = WebApplication.CreateBuilder(args);
+
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://+:{port}");
 

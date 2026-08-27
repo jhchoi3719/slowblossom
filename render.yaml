@@ -14,6 +14,10 @@ services:
         value: Production
       - key: DATA_DIR
         value: /data
+      - key: DOTNET_HOSTBUILDER_RELOADCONFIGONCHANGE
+        value: "false"
+      - key: DOTNET_USE_POLLING_FILE_WATCHER
+        value: "1"
       - key: GEMINI_API_KEY
         sync: false
       - key: NAVER_IMAP_USERNAME
