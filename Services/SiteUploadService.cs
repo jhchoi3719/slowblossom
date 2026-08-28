@@ -37,6 +37,23 @@ public sealed class SiteUploadService
         return ($"{RequestPath}/{fileName}", null);
     }
 
+    public async Task<(List<string> Urls, string? Error)> TrySaveManyAsync(IEnumerable<IFormFile>? files)
+    {
+        var urls = new List<string>();
+        string? firstError = null;
+        if (files is null)
+            return (urls, null);
+
+        foreach (var file in files)
+        {
+            var (url, error) = await TrySaveAsync(file);
+            firstError ??= error;
+            if (!string.IsNullOrWhiteSpace(url))
+                urls.Add(url);
+        }
+        return (urls, firstError);
+    }
+
     public async Task<(string Url, string? Error)> ResolveImageAsync(IFormFile? file, string? urlField, string existing)
     {
         var (uploaded, error) = await TrySaveAsync(file);

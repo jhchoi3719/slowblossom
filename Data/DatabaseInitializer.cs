@@ -178,6 +178,7 @@ public static class DatabaseInitializer
                 Category TEXT NOT NULL,
                 Caption TEXT NOT NULL,
                 ImageUrl TEXT NOT NULL,
+                ExtraImageUrls TEXT NOT NULL DEFAULT '',
                 SortOrder INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS IX_SiteGalleryItems_SortOrder ON SiteGalleryItems (SortOrder);
@@ -213,6 +214,15 @@ public static class DatabaseInitializer
             """;
 
         await db.Database.ExecuteSqlRawAsync(sql);
+        await MigrateSiteGalleryImagesAsync(db);
+    }
+
+    private static async Task MigrateSiteGalleryImagesAsync(AppDbContext db)
+    {
+        var columns = await GetTableColumnsAsync(db, "SiteGalleryItems");
+        if (!columns.Contains("ExtraImageUrls"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE SiteGalleryItems ADD COLUMN ExtraImageUrls TEXT NOT NULL DEFAULT ''");
     }
 
     private static async Task MigrateSurveyTablesAsync(AppDbContext db)

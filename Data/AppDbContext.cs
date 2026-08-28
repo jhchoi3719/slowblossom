@@ -231,6 +231,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(g => g.Category).HasMaxLength(80).IsRequired();
             entity.Property(g => g.Caption).HasMaxLength(200).IsRequired();
             entity.Property(g => g.ImageUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(g => g.ExtraImageUrls).HasMaxLength(20000).IsRequired();
             entity.HasIndex(g => g.SortOrder);
         });
 

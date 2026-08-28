@@ -13,7 +13,7 @@
         <p class="ssf-admin-eyebrow">SSF</p>
         <h1>갤러리 사진</h1>
         <span class="ssf-accent-line" aria-hidden="true"></span>
-        <p class="subtitle">분류 이름과 캡션, 사진을 수정합니다</p>
+        <p class="subtitle">분류 이름과 캡션, 사진을 수정합니다. 한 게시글에 여러 장을 올리면 홈페이지에서 슬라이드로 보여집니다</p>
     </header>
 
     @if (Saved)
@@ -61,7 +61,8 @@
                 <span class="label">캡션</span>
                 <input type="text" name="caption" class="input" value="@item.Caption" maxlength="200" />
             </label>
-            <SiteImageField ImageUrl="@item.ImageUrl" />
+            <SiteImageField Label="대표 사진" ImageUrl="@item.ImageUrl" />
+            <SiteMultiImageField Urls="@item.ExtraImageList" />
             <button type="submit" class="btn btn-primary">이 사진 저장</button>
         </form>
     }
@@ -76,7 +77,8 @@
             <span class="label">캡션</span>
             <input type="text" name="caption" class="input" maxlength="200" />
         </label>
-        <SiteImageField />
+        <SiteImageField Label="대표 사진" />
+        <SiteMultiImageField />
         <button type="submit" class="btn btn-primary">추가</button>
     </form>
 </div>

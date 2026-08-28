@@ -308,11 +308,12 @@ public static class SiteAdminEndpoints
             return Results.Redirect("/admin/site/gallery");
 
         var (image, error) = await uploads.ResolveImageAsync(form.Files.GetFile("image"), form["imageUrl"], item.ImageUrl);
+        var (extras, extraError) = await ResolveGalleryExtrasAsync(form, uploads);
         item.Category = Clip(form["category"], 80);
         item.Caption = Clip(form["caption"], 200);
-        item.ImageUrl = image;
+        (item.ImageUrl, item.ExtraImageUrls) = BuildGalleryImages(image, extras);
         await db.SaveChangesAsync();
-        return RedirectSaved("/admin/site/gallery", error, id);
+        return RedirectSaved("/admin/site/gallery", error ?? extraError, id);
     }
 
     private static async Task<IResult> AddGalleryAsync(
@@ -323,19 +324,50 @@ public static class SiteAdminEndpoints
         var form = await context.Request.ReadFormAsync();
         await using var db = await dbFactory.CreateDbContextAsync();
         var (image, error) = await uploads.ResolveImageAsync(form.Files.GetFile("image"), form["imageUrl"], "");
-        if (string.IsNullOrWhiteSpace(image))
+        var (extras, extraError) = await ResolveGalleryExtrasAsync(form, uploads);
+        var (cover, extraText) = BuildGalleryImages(image, extras);
+        if (string.IsNullOrWhiteSpace(cover))
             return Results.Redirect("/admin/site/gallery?error=empty");
 
         var item = new SiteGalleryItem
         {
             Category = Clip(form["category"], 80),
             Caption = Clip(form["caption"], 200),
-            ImageUrl = image,
+            ImageUrl = cover,
+            ExtraImageUrls = extraText,
             SortOrder = await NextSortAsync<SiteGalleryItem>(db)
         };
         db.SiteGalleryItems.Add(item);
         await db.SaveChangesAsync();
-        return RedirectSaved("/admin/site/gallery", error, item.Id);
+        return RedirectSaved("/admin/site/gallery", error ?? extraError, item.Id);
+    }
+
+    /// <summary>남겨둔 추가 사진 주소와 새로 올린 파일을 합칩니다.</summary>
+    private static async Task<(List<string> Urls, string? Error)> ResolveGalleryExtrasAsync(
+        IFormCollection form,
+        SiteUploadService uploads)
+    {
+        var urls = SiteGalleryItem.SplitUrls(form["extraImageUrls"]).ToList();
+        var (uploaded, error) = await uploads.TrySaveManyAsync(form.Files.GetFiles("extraImages"));
+        urls.AddRange(uploaded);
+        return (urls, error);
+    }
+
+    /// <summary>첫 사진을 대표로 두고 나머지를 줄바꿈으로 이어 붙입니다.</summary>
+    private static (string Cover, string Extras) BuildGalleryImages(string? cover, List<string> extras)
+    {
+        var all = new List<string>();
+        if (!string.IsNullOrWhiteSpace(cover))
+            all.Add(cover.Trim());
+        foreach (var url in extras)
+        {
+            var trimmed = url.Trim();
+            if (trimmed.Length is > 0 and <= 1000 && !all.Contains(trimmed, StringComparer.Ordinal))
+                all.Add(trimmed);
+        }
+        if (all.Count == 0)
+            return ("", "");
+        return (all[0], string.Join('\n', all.Skip(1)));
     }
 
     private static async Task<IResult> SaveFaqAsync(

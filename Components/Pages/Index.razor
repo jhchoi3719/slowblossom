@@ -1,5 +1,6 @@
 @page "/"
 @layout Layout.SiteLayout
+@using System.Text.Json
 @using RotationDating.Web.Services
 @inject SiteContentService SiteContent
 
@@ -110,8 +111,26 @@
             <div class="ssf-gallery-grid" data-ssf-gallery-grid>
                 @foreach (var item in _site.GalleryItems)
                 {
+                    var images = item.AllImageUrls;
+                    if (images.Count == 0)
+                    {
+                        continue;
+                    }
                     <article class="ssf-gallery-item" data-ssf-gallery-cat="@item.Category">
-                        <div class="ssf-gallery-thumb" style="--thumb:url('@SiteContentSnapshot.CssUrl(item.ImageUrl)')"></div>
+                        <button type="button"
+                                class="ssf-gallery-thumb"
+                                style="--thumb:url('@SiteContentSnapshot.CssUrl(images[0])')"
+                                data-ssf-gallery-open
+                                data-ssf-gallery-images="@JsonSerializer.Serialize(images)"
+                                data-ssf-gallery-caption="@item.Caption"
+                                aria-label="@(string.IsNullOrWhiteSpace(item.Caption) ? "갤러리 사진 크게 보기" : $"{item.Caption} 사진 크게 보기")">
+                            @if (images.Count > 1)
+                            {
+                                <span class="ssf-gallery-count" aria-hidden="true">
+                                    <span class="ssf-gallery-count-icon"></span>@images.Count
+                                </span>
+                            }
+                        </button>
                         <p class="ssf-gallery-caption">@item.Caption</p>
                     </article>
                 }
