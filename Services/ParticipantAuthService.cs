@@ -94,7 +94,7 @@ public static class ParticipantAuthService
 
     public static async Task SignInParticipantAsync(HttpContext context, ParticipantApplication application)
     {
-        var venue = VenueHelper.FromEventKind(application.Event!.Kind);
+        var venue = VenueHelper.FromEvent(application.Event!);
         var effectiveDate = EventDateHelper.GetEffectiveLoginDate(application.Event);
 
         var participantClaims = new[]

@@ -348,6 +348,14 @@ public static class DatabaseInitializer
         if (!columns.Contains("FinalizedDate"))
             await db.Database.ExecuteSqlRawAsync(
                 "ALTER TABLE Events ADD COLUMN FinalizedDate TEXT NULL");
+        if (!columns.Contains("Venue"))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE Events ADD COLUMN Venue INTEGER NOT NULL DEFAULT 0");
+            // Kind DatePoll (1) → HotelSuseongSquare (1); FixedDate remains UnoCoffee (0)
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE Events SET Venue = 1 WHERE Kind = 1");
+        }
     }
 
     private static async Task MigrateDatePollTablesAsync(AppDbContext db)

@@ -348,7 +348,11 @@ public static class SiteAdminEndpoints
         SiteUploadService uploads)
     {
         var urls = SiteGalleryItem.SplitUrls(form["extraImageUrls"]).ToList();
-        var (uploaded, error) = await uploads.TrySaveManyAsync(form.Files.GetFiles("extraImages"));
+        // GetFiles만으로 부족할 수 있어 같은 이름의 파일을 모두 수집합니다.
+        var files = form.Files
+            .Where(f => string.Equals(f.Name, "extraImages", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var (uploaded, error) = await uploads.TrySaveManyAsync(files);
         urls.AddRange(uploaded);
         return (urls, error);
     }

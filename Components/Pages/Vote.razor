@@ -202,7 +202,11 @@
         if (_session is null || string.IsNullOrEmpty(_session.OppositeGender))
             return;
 
-        if (_voteType == VoteType.Mid && _session.IsHotelSuseongSquare)
+        var venue = _session.ResolvedVenue;
+        if (_voteType == VoteType.Mid)
+            _pageTitle = VenueHelper.MidVoteDisplayName(venue);
+
+        if (_voteType == VoteType.Mid && !VenueHelper.SupportsMidVote(venue))
         {
             Navigation.NavigateTo("/vote/final", forceLoad: false);
             return;

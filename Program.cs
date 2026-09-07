@@ -70,7 +70,14 @@ builder.Services.AddSession(options =>
 });
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 20 * 1024 * 1024;
+    // 갤러리 추가 사진 다중 업로드 (장당 최대 8MB × 여러 장)
+    options.MultipartBodyLengthLimit = 100 * 1024 * 1024;
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
 });
 builder.Services.AddScoped<QuestionCardService>();
 builder.Services.AddScoped<SiteContentService>();
@@ -188,7 +195,7 @@ app.MapPost("/login", async ([FromForm] string? username, [FromForm] string? pas
             return InvalidLoginResponse();
         }
 
-        var testVenue = VenueHelper.FromEventKind(testEvent.Kind);
+        var testVenue = VenueHelper.FromEvent(testEvent);
         var testEffectiveDate = EventDateHelper.GetEffectiveLoginDate(testEvent);
         var testClaims = new[]
         {
@@ -323,11 +330,11 @@ app.MapPost("/participants/delete", async ([FromForm] int participantId, [FromFo
     }
 
     await using var db2 = await dbFactory.CreateDbContextAsync();
-    var kind = await db2.Events.AsNoTracking()
+    var venue = await db2.Events.AsNoTracking()
         .Where(e => e.Id == eventId)
-        .Select(e => e.Kind)
+        .Select(e => e.Venue)
         .FirstOrDefaultAsync();
-    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", VenueHelper.FromEventKind(kind), eventId));
+    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", venue, eventId));
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapPost("/participants/reset-password", async (
@@ -372,11 +379,16 @@ app.MapPost("/participants/add-date", async (
     [FromForm] string? venue,
     IDbContextFactory<AppDbContext> dbFactory) =>
 {
+    var parsedVenue = VenueHelper.TryParse(venue) ?? EventVenue.UnoCoffee;
+    if (!VenueHelper.IsFixedDateVenue(parsedVenue))
+        return Results.Redirect(ParticipantsAddDateUrl(parsedVenue, "venue"));
+
     var dateOnly = eventDate.Date;
     await using var db = await dbFactory.CreateDbContextAsync();
 
-    if (await db.Events.AnyAsync(e => e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
-        return Results.Redirect(ParticipantsAddDateUrl("duplicate"));
+    if (await db.Events.AnyAsync(e =>
+            e.Venue == parsedVenue && e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
+        return Results.Redirect(ParticipantsAddDateUrl(parsedVenue, "duplicate"));
 
     var eventTitle = string.IsNullOrWhiteSpace(title)
         ? $"{dateOnly:M월 d일} 로테이션 소개팅"
@@ -386,13 +398,14 @@ app.MapPost("/participants/add-date", async (
     {
         Title = eventTitle,
         Kind = EventKind.FixedDate,
+        Venue = parsedVenue,
         EventDate = dateOnly.AddHours(18),
-        Location = VenueHelper.LocationName(EventVenue.UnoCoffee)
+        Location = VenueHelper.LocationName(parsedVenue)
     };
 
     db.Events.Add(evt);
     await db.SaveChangesAsync();
-    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", EventVenue.UnoCoffee, evt.Id));
+    return Results.Redirect(VenueHelper.AdminPageUrl("/participants", parsedVenue, evt.Id));
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapPost("/participants/save", async (
@@ -470,10 +483,9 @@ app.MapPost("/applications/add-date", async (
     IDbContextFactory<AppDbContext> dbFactory) =>
 {
     await using var db = await dbFactory.CreateDbContextAsync();
-    var parsedVenue = VenueHelper.TryParse(venue);
+    var parsedVenue = VenueHelper.TryParse(venue) ?? EventVenue.UnoCoffee;
     var kind = eventKind == "poll" ? EventKind.DatePoll : EventKind.FixedDate;
-    if (parsedVenue.HasValue)
-        kind = VenueHelper.ToEventKind(parsedVenue.Value);
+    kind = VenueHelper.ToEventKind(parsedVenue);
 
     if (kind == EventKind.DatePoll)
     {
@@ -498,6 +510,7 @@ app.MapPost("/applications/add-date", async (
         {
             Title = eventTitle,
             Kind = EventKind.DatePoll,
+            Venue = EventVenue.HotelSuseongSquare,
             EventDate = dates[0].AddHours(18),
             Location = VenueHelper.LocationName(EventVenue.HotelSuseongSquare),
             CandidateDates = dates.Select((d, i) => new EventCandidateDate
@@ -509,16 +522,17 @@ app.MapPost("/applications/add-date", async (
 
         db.Events.Add(evt);
         await db.SaveChangesAsync();
-        return Results.Redirect(ApplicationsUrl(EventKind.DatePoll, evt.Id));
+        return Results.Redirect(VenueHelper.AdminPageUrl("/applications", EventVenue.HotelSuseongSquare, evt.Id));
     }
 
     if (eventDate is null)
-        return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.UnoParam, "date"));
+        return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.ToParam(parsedVenue), "date"));
 
     var dateOnly = eventDate.Value.Date;
 
-    if (await db.Events.AnyAsync(e => e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
-        return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.UnoParam, "duplicate"));
+    if (await db.Events.AnyAsync(e =>
+            e.Venue == parsedVenue && e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
+        return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.ToParam(parsedVenue), "duplicate"));
 
     var fixedTitle = string.IsNullOrWhiteSpace(title)
         ? $"{dateOnly:M월 d일} 로테이션 소개팅"
@@ -528,13 +542,14 @@ app.MapPost("/applications/add-date", async (
     {
         Title = fixedTitle,
         Kind = EventKind.FixedDate,
+        Venue = parsedVenue,
         EventDate = dateOnly.AddHours(18),
-        Location = VenueHelper.LocationName(EventVenue.UnoCoffee)
+        Location = VenueHelper.LocationName(parsedVenue)
     };
 
     db.Events.Add(fixedEvent);
     await db.SaveChangesAsync();
-    return Results.Redirect(ApplicationsUrl(EventKind.FixedDate, fixedEvent.Id));
+    return Results.Redirect(VenueHelper.AdminPageUrl("/applications", parsedVenue, fixedEvent.Id));
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 app.MapPost("/applications/update-date", async (
@@ -550,7 +565,7 @@ app.MapPost("/applications/update-date", async (
         return Results.Redirect("/home");
 
     if (await db.Events.AnyAsync(e =>
-            e.Id != eventId && e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
+            e.Id != eventId && e.Venue == evt.Venue && e.Kind == EventKind.FixedDate && e.EventDate.Date == dateOnly))
         return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId, "editDate=true&error=duplicate"));
 
     evt.EventDate = dateOnly.AddHours(18);
@@ -799,15 +814,14 @@ app.MapPost("/events/delete", async (
 {
     await using var db = await dbFactory.CreateDbContextAsync();
     var evt = await db.Events.FindAsync(eventId);
-    EventKind kind = evt?.Kind ?? EventKind.FixedDate;
+    var fallbackVenue = evt is null ? EventVenue.UnoCoffee : VenueHelper.FromEvent(evt);
     if (evt is not null)
     {
-        kind = evt.Kind;
         db.Events.Remove(evt);
         await db.SaveChangesAsync();
     }
 
-    var parsedVenue = VenueHelper.TryParse(venue) ?? VenueHelper.FromEventKind(kind);
+    var parsedVenue = VenueHelper.TryParse(venue) ?? fallbackVenue;
     var path = returnPage == "participants" ? "/participants" : "/applications";
     return Results.Redirect(VenueHelper.AdminPageUrl(path, parsedVenue));
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
@@ -1058,7 +1072,7 @@ app.MapPost("/vote/save", async (
     if (!Enum.TryParse<VoteType>(voteType, ignoreCase: true, out var parsedVoteType))
         return Results.Redirect("/welcome");
 
-    if (session.IsHotelSuseongSquare && parsedVoteType == VoteType.Mid)
+    if (!VenueHelper.SupportsMidVote(session.ResolvedVenue) && parsedVoteType == VoteType.Mid)
         return Results.Redirect("/vote/final");
 
     await using var db = await dbFactory.CreateDbContextAsync();
@@ -1345,8 +1359,8 @@ async Task InitializeSiteDataAsync()
     }
 }
 
-static string ApplicationsUrl(EventKind kind, int? eventId = null, string? extraQuery = null, string? fragment = null) =>
-    VenueHelper.AdminPageUrl("/applications", VenueHelper.FromEventKind(kind), eventId, extraQuery, fragment);
+static string ApplicationsUrl(EventVenue venue, int? eventId = null, string? extraQuery = null, string? fragment = null) =>
+    VenueHelper.AdminPageUrl("/applications", venue, eventId, extraQuery, fragment);
 
 static string ApplicationsAddDateUrl(string venueParam, string error) =>
     VenueHelper.AdminPageUrl(
@@ -1354,8 +1368,8 @@ static string ApplicationsAddDateUrl(string venueParam, string error) =>
         VenueHelper.TryParse(venueParam) ?? EventVenue.UnoCoffee,
         extraQuery: $"addDate=true&error={error}");
 
-static string ParticipantsAddDateUrl(string error) =>
-    VenueHelper.AdminPageUrl("/participants", EventVenue.UnoCoffee, extraQuery: $"addDate=true&error={error}");
+static string ParticipantsAddDateUrl(EventVenue venue, string error) =>
+    VenueHelper.AdminPageUrl("/participants", venue, extraQuery: $"addDate=true&error={error}");
 
 static async Task<string> ApplicationsUrlForEventAsync(
     IDbContextFactory<AppDbContext> dbFactory,
@@ -1364,11 +1378,11 @@ static async Task<string> ApplicationsUrlForEventAsync(
     string? fragment = null)
 {
     await using var db = await dbFactory.CreateDbContextAsync();
-    var kind = await db.Events.AsNoTracking()
+    var venue = await db.Events.AsNoTracking()
         .Where(e => e.Id == eventId)
-        .Select(e => e.Kind)
+        .Select(e => e.Venue)
         .FirstOrDefaultAsync();
-    return ApplicationsUrl(kind, eventId, extraQuery, fragment);
+    return ApplicationsUrl(venue, eventId, extraQuery, fragment);
 }
 
 static async Task<string> SeatingUrlForEventAsync(
@@ -1378,11 +1392,11 @@ static async Task<string> SeatingUrlForEventAsync(
     string? extraQuery = null)
 {
     await using var db = await dbFactory.CreateDbContextAsync();
-    var kind = await db.Events.AsNoTracking()
+    var venue = await db.Events.AsNoTracking()
         .Where(e => e.Id == eventId)
-        .Select(e => e.Kind)
+        .Select(e => e.Venue)
         .FirstOrDefaultAsync();
-    return VenueHelper.AdminPageUrl(pagePath, VenueHelper.FromEventKind(kind), eventId, extraQuery);
+    return VenueHelper.AdminPageUrl(pagePath, venue, eventId, extraQuery);
 }
 
 static string? MergeApplicationListQuery(string? filterQuery, string? extraQuery)
@@ -1451,7 +1465,7 @@ static async Task<IResult> RedirectParticipantAfterSignInAsync(
         return Results.Redirect("/welcome");
 
     await using var db = await dbFactory.CreateDbContextAsync();
-    var venue = VenueHelper.FromEventKind(application.Event.Kind);
+    var venue = VenueHelper.FromEvent(application.Event);
     if (await consentService.NeedsConsentAsync(db, application, venue))
         return Results.Redirect("/consent");
 

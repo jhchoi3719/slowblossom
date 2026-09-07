@@ -2194,6 +2194,10 @@ h1:focus {
     border-color: var(--border);
 }
 
+.venue-card.venue-stayyeon {
+    border-color: var(--border);
+}
+
 .venue-icon {
     display: none;
 }
@@ -2234,6 +2238,11 @@ h1:focus {
 .venue-icon-badge.tone-blue {
     background: var(--male-soft);
     color: var(--male);
+}
+
+.venue-card.venue-stayyeon .venue-icon-badge {
+    background: #e8f5f2;
+    color: #2a7a6a;
 }
 
 .venue-title {

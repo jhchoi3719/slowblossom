@@ -33,7 +33,7 @@ public class ParticipantConsentService
         """;
 
     public static EventVenue VenueFromSession(ParticipantSession session) =>
-        session.IsHotelSuseongSquare ? EventVenue.HotelSuseongSquare : EventVenue.UnoCoffee;
+        session.ResolvedVenue;
 
     public static string VenueKey(EventVenue venue) => VenueHelper.ToParam(venue);
 
@@ -90,7 +90,7 @@ public class ParticipantConsentService
 
     public async Task EnsureSeededAsync(AppDbContext db)
     {
-        foreach (var venue in new[] { EventVenue.UnoCoffee, EventVenue.HotelSuseongSquare })
+        foreach (var venue in new[] { EventVenue.UnoCoffee, EventVenue.HotelSuseongSquare, EventVenue.StayYeon })
         {
             var key = VenueKey(venue);
             if (await db.ConsentSettings.AnyAsync(s => s.VenueKey == key))

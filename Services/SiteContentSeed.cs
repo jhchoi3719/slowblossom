@@ -20,7 +20,7 @@ internal static class SiteContentSeed
         [SiteContentKeys.AboutList] = "온라인·오프라인 꽃·식물·제로웨이스트 수업 진행\n연령·대상별 맞춤 수업 및 기업·복지 힐링 프로그램\n화훼장식기능사 · 조경기능사\n도시농업 · 힐링가든 · 치유농장 운영",
         [SiteContentKeys.EventEyebrow] = "Event by SSF",
         [SiteContentKeys.EventTitle] = "slow blossom",
-        [SiteContentKeys.EventDesc] = "싱싱한팜에서 기획·운영하는 프리미엄 로테이션 소개팅 행사입니다.\n우노커피, 호텔수성스퀘어 등에서 만나보세요.",
+        [SiteContentKeys.EventDesc] = "싱싱한팜에서 기획·운영하는 프리미엄 로테이션 소개팅 행사입니다.\n우노커피, 호텔수성스퀘어, 스테이연 등에서 만나보세요.",
         [SiteContentKeys.FooterCompany] = "SSF 싱싱한팜",
         [SiteContentKeys.FooterOwner] = "이효정",
         [SiteContentKeys.FooterEmail] = "singsingfarm22@naver.com",

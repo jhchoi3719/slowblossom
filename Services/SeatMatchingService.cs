@@ -197,6 +197,9 @@ public class SeatMatchingService(
 
         var evt = await db.Events.FindAsync([eventId], cancellationToken);
         var referenceDate = evt?.EventDate.Date ?? DateTime.Today;
+        var midVoteLabel = evt is null
+            ? "중간투표"
+            : VenueHelper.MidVoteDisplayName(VenueHelper.FromEvent(evt));
 
         var males = applications.Where(a => a.Gender == "남").ToList();
         var females = applications.Where(a => a.Gender == "여").ToList();
@@ -247,7 +250,7 @@ public class SeatMatchingService(
                 })
                 .ToList();
 
-            var seatingContext = includeMidVotes ? "중간투표 기반 좌석 배치" : "행사 시작 전 초기 좌석 배치";
+            var seatingContext = includeMidVotes ? $"{midVoteLabel} 기반 좌석 배치" : "행사 시작 전 초기 좌석 배치";
             var algorithmPairs = BuildFallbackPairs(remainingMales, remainingFemales, voteByVoter, referenceDate);
             var aiPairs = await RequestGeminiPairsAsync(
                 remainingMales,
@@ -277,7 +280,8 @@ public class SeatMatchingService(
                 voteByVoter,
                 nameById,
                 referenceDate,
-                chosenPairs.Select(p => (p.MaleId, p.FemaleId)));
+                chosenPairs.Select(p => (p.MaleId, p.FemaleId)),
+                midVoteLabel);
         }
 
         // AI/알고리즘 이후 남은 참가자도 호환성 점수 기준으로 매칭
@@ -297,7 +301,8 @@ public class SeatMatchingService(
                     availableMales.Values.ToList(),
                     availableFemales.Values.ToList(),
                     referenceDate,
-                    voteByVoter));
+                    voteByVoter),
+                midVoteLabel);
         }
 
         var existing = await db.AiMatches
@@ -588,7 +593,8 @@ public class SeatMatchingService(
         Dictionary<int, int> voteByVoter,
         Dictionary<int, string> nameById,
         DateTime referenceDate,
-        IEnumerable<(int MaleId, int FemaleId)> pairs)
+        IEnumerable<(int MaleId, int FemaleId)> pairs,
+        string midVoteLabel = "중간투표")
     {
         foreach (var (maleId, femaleId) in pairs)
         {
@@ -616,7 +622,8 @@ public class SeatMatchingService(
                     maleVoteTarget,
                     femaleVoteTarget,
                     maleVoteTarget > 0 ? nameById.GetValueOrDefault(maleVoteTarget) : null,
-                    femaleVoteTarget > 0 ? nameById.GetValueOrDefault(femaleVoteTarget) : null)
+                    femaleVoteTarget > 0 ? nameById.GetValueOrDefault(femaleVoteTarget) : null,
+                    midVoteLabel)
             });
         }
     }

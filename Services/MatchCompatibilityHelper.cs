@@ -105,14 +105,15 @@ public static partial class MatchCompatibilityHelper
         int maleVotedForId = 0,
         int femaleVotedForId = 0,
         string? maleVotedForName = null,
-        string? femaleVotedForName = null)
+        string? femaleVotedForName = null,
+        string midVoteLabel = "중간투표")
     {
         var reasons = new List<string>();
 
         if (maleVotedForId == female.Id)
-            reasons.Add($"{male.Name}님이 중간투표에서 {female.Name}님을 선택했으나 상대방 선택과 맞지 않았습니다");
+            reasons.Add($"{male.Name}님이 {midVoteLabel}에서 {female.Name}님을 선택했으나 상대방 선택과 맞지 않았습니다");
         else if (femaleVotedForId == male.Id)
-            reasons.Add($"{female.Name}님이 중간투표에서 {male.Name}님을 선택했으나 상대방 선택과 맞지 않았습니다");
+            reasons.Add($"{female.Name}님이 {midVoteLabel}에서 {male.Name}님을 선택했으나 상대방 선택과 맞지 않았습니다");
         else if (!string.IsNullOrWhiteSpace(maleVotedForName) || !string.IsNullOrWhiteSpace(femaleVotedForName))
         {
             var voteNote = new List<string>();

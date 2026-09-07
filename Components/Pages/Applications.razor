@@ -43,7 +43,7 @@
             <h2>행사 추가 · @VenueHelper.DisplayName(_venue.Value)</h2>
             <form method="post" action="/applications/add-date">
                 <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
-                @if (_venue == EventVenue.UnoCoffee)
+                @if (VenueHelper.IsFixedDateVenue(_venue.Value))
                 {
                     <input type="hidden" name="eventKind" value="fixed" />
                     <div class="form-grid">
@@ -116,7 +116,7 @@
                 <span class="summary-item poll">@_selectedEvent.Title</span>
             }
             <span class="summary-date">@_selectedEvent.FormattedDate</span>
-            @if (_selectedEvent.Kind == EventKind.FixedDate && _venue == EventVenue.UnoCoffee)
+            @if (_selectedEvent.Kind == EventKind.FixedDate && VenueHelper.IsFixedDateVenue(_venue.Value))
             {
                 <a class="btn btn-sm btn-secondary" href="@GetPageUrl(_selectedEvent.Id, "editDate=true")">날짜 수정</a>
             }
@@ -134,7 +134,7 @@
             <div class="alert-success">행사 날짜가 변경되었습니다. 확정된 참가자 로그인 ID도 새 날짜 기준으로 안내해 주세요.</div>
         }
 
-        @if (EditDate && _selectedEvent.Kind == EventKind.FixedDate && _venue == EventVenue.UnoCoffee)
+        @if (EditDate && _selectedEvent.Kind == EventKind.FixedDate && VenueHelper.IsFixedDateVenue(_venue.Value))
         {
             <div class="card form-card event-date-edit-card">
                 <h2>행사 날짜 수정</h2>

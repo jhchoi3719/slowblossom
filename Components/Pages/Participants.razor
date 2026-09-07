@@ -35,7 +35,7 @@
                     <span class="tab-count">@(confirmedCount)명</span>
                 </a>
             }
-            @if (_venue == EventVenue.UnoCoffee)
+            @if (VenueHelper.IsFixedDateVenue(_venue.Value))
             {
                 <a class="date-tab add-tab" href="@GetPageUrl(extraQuery: "addDate=true")">
                     + 날짜
@@ -43,12 +43,12 @@
             }
         </div>
 
-        @if (AddDate && _venue == EventVenue.UnoCoffee)
+        @if (AddDate && VenueHelper.IsFixedDateVenue(_venue.Value))
         {
             <div class="card form-card">
-                <h2>행사 날짜 추가 · 우노커피</h2>
+                <h2>행사 날짜 추가 · @VenueHelper.DisplayName(_venue.Value)</h2>
                 <form method="post" action="/participants/add-date">
-                    <input type="hidden" name="venue" value="@VenueHelper.UnoParam" />
+                    <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
                     <div class="form-grid">
                         <label>
                             날짜
@@ -76,7 +76,7 @@
         {
             <div class="empty-state">
                 <p>등록된 행사가 없습니다.</p>
-                @if (_venue == EventVenue.UnoCoffee)
+                @if (VenueHelper.IsFixedDateVenue(_venue.Value))
                 {
                     <p>위 <strong>+ 날짜</strong> 버튼으로 행사 날짜를 먼저 추가하세요.</p>
                 }

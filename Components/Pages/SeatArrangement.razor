@@ -168,16 +168,19 @@
         _venue = VenueHelper.TryParse(Venue);
         _homeUrl = _venue.HasValue ? VenueHelper.AdminHomeUrl(_venue.Value) : "/home";
         _generateAction = _isInitialMode ? "/seating/initial/generate" : "/seating/mid/generate";
+        var midVoteLabel = _venue.HasValue
+            ? VenueHelper.MidVoteDisplayName(_venue.Value)
+            : "중간투표";
         _pageSubtitle = _isInitialMode
             ? (_venue.HasValue
                 ? $"{VenueHelper.DisplayName(_venue.Value)} · 행사 시작 전에 AI로 남녀 1:1 좌석을 배치합니다"
                 : "행사 시작 전에 AI로 남녀 1:1 좌석을 배치합니다")
             : (_venue.HasValue
-                ? $"{VenueHelper.DisplayName(_venue.Value)} · 중간투표 결과를 바탕으로 남녀 1:1 좌석을 배치합니다"
-                : "중간투표 결과를 바탕으로 남녀 1:1 좌석을 배치합니다");
+                ? $"{VenueHelper.DisplayName(_venue.Value)} · {midVoteLabel} 결과를 바탕으로 남녀 1:1 좌석을 배치합니다"
+                : $"{midVoteLabel} 결과를 바탕으로 남녀 1:1 좌석을 배치합니다");
         _emptyDescription = _isInitialMode
             ? "행사 시작 전에 좌석 배치를 생성해 주세요."
-            : "중간투표가 완료된 뒤 좌석 배치를 생성해 주세요.";
+            : $"{midVoteLabel}가 완료된 뒤 좌석 배치를 생성해 주세요.";
 
         if (!_isInitialMode && _venue == EventVenue.HotelSuseongSquare)
         {

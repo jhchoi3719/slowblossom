@@ -188,10 +188,34 @@
         });
     }
 
+    function initMultiFilePickers() {
+        if (document.documentElement.dataset.ssfMultiFileBound === '1') return;
+        document.documentElement.dataset.ssfMultiFileBound = '1';
+        document.addEventListener('change', function (event) {
+            var input = event.target;
+            if (!input || !input.matches || !input.matches('[data-ssf-multi-file]')) return;
+            var label = input.closest('.site-admin-multi-image')
+                && input.closest('.site-admin-multi-image').querySelector('[data-ssf-multi-file-label]');
+            if (!label) return;
+            var files = Array.prototype.slice.call(input.files || []);
+            if (files.length === 0) {
+                label.hidden = true;
+                label.textContent = '';
+                return;
+            }
+            var names = files.map(function (f) { return f.name; });
+            label.hidden = false;
+            label.textContent = files.length === 1
+                ? '1장 선택: ' + names[0]
+                : files.length + '장 선택: ' + names.join(', ');
+        });
+    }
+
     function boot() {
         initSiteHeader();
         initGalleryTabs();
         initGalleryViewer();
+        initMultiFilePickers();
     }
 
     if (document.readyState === 'loading')

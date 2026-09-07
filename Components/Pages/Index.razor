@@ -16,6 +16,50 @@
     </div>
 </section>
 
+@if (_site.GalleryItems.Count > 0)
+{
+    <section class="ssf-gallery" id="gallery">
+        <div class="ssf-container">
+            <div class="ssf-gallery-tabs" role="tablist" aria-label="갤러리 분류" data-ssf-gallery-tabs>
+                @foreach (var tab in _site.GalleryTabs)
+                {
+                    <button type="button"
+                            class="ssf-gallery-tab @(tab == "전체" ? "is-active" : "")"
+                            data-ssf-gallery-tab="@tab"
+                            role="tab">@tab</button>
+                }
+            </div>
+            <div class="ssf-gallery-grid" data-ssf-gallery-grid>
+                @foreach (var item in _site.GalleryItems)
+                {
+                    var images = item.AllImageUrls;
+                    if (images.Count == 0)
+                    {
+                        continue;
+                    }
+                    <article class="ssf-gallery-item" data-ssf-gallery-cat="@item.Category">
+                        <button type="button"
+                                class="ssf-gallery-thumb"
+                                style="--thumb:url('@SiteContentSnapshot.CssUrl(images[0])')"
+                                data-ssf-gallery-open
+                                data-ssf-gallery-images="@JsonSerializer.Serialize(images)"
+                                data-ssf-gallery-caption="@item.Caption"
+                                aria-label="@(string.IsNullOrWhiteSpace(item.Caption) ? "갤러리 사진 크게 보기" : $"{item.Caption} 사진 크게 보기")">
+                            @if (images.Count > 1)
+                            {
+                                <span class="ssf-gallery-count" aria-hidden="true">
+                                    <span class="ssf-gallery-count-icon"></span>@images.Count
+                                </span>
+                            }
+                        </button>
+                        <p class="ssf-gallery-caption">@item.Caption</p>
+                    </article>
+                }
+            </div>
+        </div>
+    </section>
+}
+
 @for (var i = 0; i < _site.Sections.Count; i++)
 {
     var block = _site.Sections[i];
@@ -91,50 +135,6 @@
                     </div>
                 </a>
             }
-        </div>
-    </section>
-}
-
-@if (_site.GalleryItems.Count > 0)
-{
-    <section class="ssf-gallery" id="gallery">
-        <div class="ssf-container">
-            <div class="ssf-gallery-tabs" role="tablist" aria-label="갤러리 분류" data-ssf-gallery-tabs>
-                @foreach (var tab in _site.GalleryTabs)
-                {
-                    <button type="button"
-                            class="ssf-gallery-tab @(tab == "전체" ? "is-active" : "")"
-                            data-ssf-gallery-tab="@tab"
-                            role="tab">@tab</button>
-                }
-            </div>
-            <div class="ssf-gallery-grid" data-ssf-gallery-grid>
-                @foreach (var item in _site.GalleryItems)
-                {
-                    var images = item.AllImageUrls;
-                    if (images.Count == 0)
-                    {
-                        continue;
-                    }
-                    <article class="ssf-gallery-item" data-ssf-gallery-cat="@item.Category">
-                        <button type="button"
-                                class="ssf-gallery-thumb"
-                                style="--thumb:url('@SiteContentSnapshot.CssUrl(images[0])')"
-                                data-ssf-gallery-open
-                                data-ssf-gallery-images="@JsonSerializer.Serialize(images)"
-                                data-ssf-gallery-caption="@item.Caption"
-                                aria-label="@(string.IsNullOrWhiteSpace(item.Caption) ? "갤러리 사진 크게 보기" : $"{item.Caption} 사진 크게 보기")">
-                            @if (images.Count > 1)
-                            {
-                                <span class="ssf-gallery-count" aria-hidden="true">
-                                    <span class="ssf-gallery-count-icon"></span>@images.Count
-                                </span>
-                            }
-                        </button>
-                        <p class="ssf-gallery-caption">@item.Caption</p>
-                    </article>
-                }
-            </div>
         </div>
     </section>
 }

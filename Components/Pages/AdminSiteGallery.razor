@@ -16,14 +16,6 @@
         <p class="subtitle">분류 이름과 캡션, 사진을 수정합니다. 한 게시글에 여러 장을 올리면 홈페이지에서 슬라이드로 보여집니다</p>
     </header>
 
-    @if (Saved)
-    {
-        <div class="alert-success">저장되었습니다.</div>
-    }
-    @if (Deleted)
-    {
-        <div class="alert-success">삭제되었습니다.</div>
-    }
     @if (Error == "empty")
     {
         <div class="error-text">사진을 올리거나 이미지 주소를 입력해 주세요.</div>
@@ -65,6 +57,15 @@
             <SiteMultiImageField Urls="@item.ExtraImageList" />
             <button type="submit" class="btn btn-primary">이 사진 저장</button>
         </form>
+    }
+
+    @if (Saved)
+    {
+        <div class="ssf-admin-toast" role="status" aria-live="polite">저장되었습니다.</div>
+    }
+    @if (Deleted)
+    {
+        <div class="ssf-admin-toast" role="status" aria-live="polite">삭제되었습니다.</div>
     }
 
     <form method="post" action="/admin/site/gallery/add" enctype="multipart/form-data" class="card form-card site-admin-item">

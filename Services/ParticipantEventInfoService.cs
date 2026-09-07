@@ -27,7 +27,7 @@ public static class ParticipantEventInfoService
         if (evt is null)
             return null;
 
-        var venue = VenueHelper.FromEventKind(evt.Kind);
+        var venue = VenueHelper.FromEvent(evt);
         var effectiveDate = EventDateHelper.GetEffectiveLoginDate(evt);
 
         return new ParticipantEventInfo

@@ -34,6 +34,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Location).HasMaxLength(500);
             entity.HasIndex(e => e.EventDate);
+            entity.HasIndex(e => e.Venue);
         });
 
         modelBuilder.Entity<EventCandidateDate>(entity =>

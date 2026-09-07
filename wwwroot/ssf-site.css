@@ -370,6 +370,12 @@ button.site-nav-logout {
     border-style: dashed;
 }
 
+.site-shell .ssf-admin-page .site-admin-file-picked {
+    margin: -4px 0 0;
+    color: var(--ssf-pink);
+    font-weight: 600;
+}
+
 .site-shell .ssf-admin-page .btn {
     border-radius: 999px;
     min-height: 42px;
@@ -419,6 +425,42 @@ button.site-nav-logout {
     border: 1px solid #d7eadc;
     border-radius: 14px;
     font-weight: 600;
+}
+
+.site-shell .ssf-admin-toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(24px, env(safe-area-inset-bottom, 0px) + 16px);
+    transform: translateX(-50%);
+    z-index: 1200;
+    margin: 0;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: rgba(45, 74, 58, 0.94);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    box-shadow: 0 10px 28px rgba(20, 40, 30, 0.22);
+    pointer-events: none;
+    animation: ssf-admin-toast-fade 2.4s ease forwards;
+}
+
+@keyframes ssf-admin-toast-fade {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 8px);
+    }
+    12%,
+    72% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -4px);
+        visibility: hidden;
+    }
 }
 
 .site-shell .ssf-admin-page .error-text {

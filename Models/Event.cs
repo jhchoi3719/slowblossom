@@ -6,6 +6,7 @@ public class Event
     public string Title { get; set; } = string.Empty;
     public DateTime EventDate { get; set; }
     public EventKind Kind { get; set; } = EventKind.FixedDate;
+    public EventVenue Venue { get; set; } = EventVenue.UnoCoffee;
     public DateTime? FinalizedDate { get; set; }
     public string? Location { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;

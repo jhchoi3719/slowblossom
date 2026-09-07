@@ -41,6 +41,9 @@ public sealed class ParticipantSession
         _ => ""
     };
 
+    public EventVenue ResolvedVenue =>
+        VenueHelper.FromDisplayName(VenueLabel) ?? EventVenue.UnoCoffee;
+
     public bool IsHotelSuseongSquare =>
-        VenueLabel.Contains("호텔수성스퀘어", StringComparison.Ordinal);
+        ResolvedVenue == EventVenue.HotelSuseongSquare;
 }

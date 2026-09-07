@@ -2,6 +2,7 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@using RotationDating.Web.Models
 @using RotationDating.Web.Services
 
 <div class="app-shell participant-shell">
@@ -29,13 +30,13 @@
         </NavLink>
         <AuthorizeView Roles="Participant">
             <Authorized>
-                @if (!IsHotelSuseongParticipant(context.User))
+                @if (ShowsMidVote(context.User))
                 {
                     <NavLink href="/vote/mid" class="nav-item">
                         <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 20.4S4.8 15.6 4.8 10.2A3.9 3.9 0 0 1 12 7.5a3.9 3.9 0 0 1 7.2 2.7c0 5.4-7.2 10.2-7.2 10.2Z" />
                         </svg>
-                        <span class="nav-label">중간투표</span>
+                        <span class="nav-label">@MidVoteLabel(context.User)</span>
                     </NavLink>
                 }
             </Authorized>
@@ -58,6 +59,13 @@
 </div>
 
 @code {
-    private static bool IsHotelSuseongParticipant(ClaimsPrincipal user) =>
-        user.FindFirst(AuthClaims.VenueLabel)?.Value.Contains("호텔수성스퀘어", StringComparison.Ordinal) == true;
+    private static EventVenue ResolveVenue(ClaimsPrincipal user) =>
+        VenueHelper.FromDisplayName(user.FindFirst(AuthClaims.VenueLabel)?.Value)
+        ?? EventVenue.UnoCoffee;
+
+    private static bool ShowsMidVote(ClaimsPrincipal user) =>
+        VenueHelper.SupportsMidVote(ResolveVenue(user));
+
+    private static string MidVoteLabel(ClaimsPrincipal user) =>
+        VenueHelper.MidVoteDisplayName(ResolveVenue(user));
 }

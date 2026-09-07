@@ -42,6 +42,21 @@
                 </div>
                 <span class="menu-arrow">›</span>
             </a>
+
+            <a href="@VenueHelper.AdminHomeUrl(EventVenue.StayYeon)" class="venue-card venue-stayyeon">
+                <span class="venue-icon-badge tone-teal">
+                    <svg class="menu-svg" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3.5 11.5 12 4l8.5 7.5" />
+                        <path d="M6 10.5V20h12v-9.5" />
+                        <path d="M10 20v-5h4v5" />
+                    </svg>
+                </span>
+                <div class="venue-text">
+                    <span class="venue-title">스테이연</span>
+                    <span class="venue-desc">날짜가 정해진 행사 · 신청서·투표·좌석</span>
+                </div>
+                <span class="menu-arrow">›</span>
+            </a>
         </div>
 
         <div class="menu-list menu-list-spaced">
@@ -99,7 +114,7 @@
                 <span class="menu-arrow">›</span>
             </a>
 
-            @if (_venue == EventVenue.UnoCoffee)
+            @if (VenueHelper.SupportsMidVote(_venue.Value))
             {
                 <a href="@VenueHelper.AdminPageUrl("/vote-results/mid", _venue.Value)" class="menu-card">
                     <span class="menu-icon-badge tone-rose">
@@ -108,7 +123,7 @@
                         </svg>
                     </span>
                     <div class="menu-text">
-                        <span class="menu-title">중간투표 결과</span>
+                        <span class="menu-title">@VenueHelper.MidVoteDisplayName(_venue.Value) 결과</span>
                         <span class="menu-desc">누가 누구를 선택했는지 확인</span>
                     </div>
                     <span class="menu-arrow">›</span>
@@ -144,7 +159,7 @@
                 <span class="menu-arrow">›</span>
             </a>
 
-            @if (_venue == EventVenue.UnoCoffee)
+            @if (VenueHelper.SupportsMidVote(_venue.Value))
             {
                 <a href="@VenueHelper.AdminPageUrl("/seating/mid", _venue.Value)" class="menu-card">
                     <span class="menu-icon-badge tone-teal">
@@ -155,8 +170,8 @@
                         </svg>
                     </span>
                     <div class="menu-text">
-                        <span class="menu-title">중간투표 좌석 배치</span>
-                        <span class="menu-desc">중간투표 결과 반영 1:1 좌석 매칭</span>
+                        <span class="menu-title">@VenueHelper.MidVoteDisplayName(_venue.Value) 좌석 배치</span>
+                        <span class="menu-desc">@VenueHelper.MidVoteDisplayName(_venue.Value) 결과 반영 1:1 좌석 매칭</span>
                     </div>
                     <span class="menu-arrow">›</span>
                 </a>
