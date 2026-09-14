@@ -461,6 +461,27 @@ app.MapPost("/participants/save", async (
     return Results.Redirect($"/participants?eventId={eventId}");
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
+app.MapGet("/applications/export", async (int eventId, IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync();
+    var evt = await db.Events
+        .Include(e => e.Applications)
+            .ThenInclude(a => a.Availabilities)
+        .Include(e => e.CandidateDates)
+        .FirstOrDefaultAsync(e => e.Id == eventId);
+
+    if (evt is null)
+        return Results.Redirect("/applications");
+
+    var applications = evt.Applications
+        .OrderBy(a => EventDateHelper.ShowsUnavailableOnFinalizedDate(evt, a) ? 1 : 0)
+        .ThenByDescending(a => a.CreatedAt)
+        .ToList();
+
+    var bytes = ApplicationExcelExporter.Build(evt, applications);
+    return Results.File(bytes, ApplicationExcelExporter.ContentType, ApplicationExcelExporter.FileName(evt));
+}).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin));
+
 app.MapPost("/applications/delete", async ([FromForm] int applicationId, [FromForm] int eventId, IDbContextFactory<AppDbContext> dbFactory) =>
 {
     await using var db = await dbFactory.CreateDbContextAsync();

@@ -217,9 +217,10 @@
         <div class="toolbar toolbar-actions">
             <a class="btn btn-primary" href="@GetPageUrl(_selectedEvent.Id, "addApplication=true")">+ 신청서 추가</a>
             <a class="btn btn-secondary" href="@GetPageUrl(_selectedEvent.Id, "bulkAdd=true")">일괄 추가</a>
+            <a class="btn btn-secondary" href="@($"/applications/export?eventId={_selectedEvent.Id}")">엑셀 다운로드</a>
             @if (_visibleApplications.Any(a => !string.IsNullOrWhiteSpace(a.Phone)))
             {
-                <label class="sms-select-all-label">
+                <label class="sms-select-all-label" hidden>
                     <input type="checkbox" id="sms-select-all" onchange="toggleAllSmsCheckboxes(this)" />
                     전체 선택
                 </label>
@@ -228,7 +229,8 @@
                     id="bulk-sms-btn"
                     class="btn btn-secondary"
                     onclick="openBulkSmsFromCheckboxes()"
-                    disabled>
+                    disabled
+                    hidden>
                 일괄 메시지 보내기 (<span id="sms-selected-count">0</span>)
             </button>
         </div>
@@ -580,7 +582,7 @@
                             </form>
                         </div>
                         </div>
-                        <label class="application-sms-check" title="@(hasPhone ? "일괄 메시지 대상" : "연락처 없음")">
+                        <label class="application-sms-check" hidden title="@(hasPhone ? "일괄 메시지 대상" : "연락처 없음")">
                             <input type="checkbox"
                                    class="sms-select-checkbox"
                                    data-phone="@smsPhone"
