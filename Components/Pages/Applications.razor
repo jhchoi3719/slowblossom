@@ -159,7 +159,7 @@
                 <label>
                     안내문 (일시·장소·참가비 등 · 비워 두면 기본 안내문)
                     <textarea name="applyNotice" class="input textarea" rows="10"
-                              placeholder="@ApplicationNoticeDefaults.DefaultNotice">@_selectedEvent.ApplyNotice</textarea>
+                              placeholder="@ApplicationNoticeDefaults.DefaultNotice">@ApplicationNoticeFormatter.ToEditableText(ApplicationNoticeDefaults.Notice(_selectedEvent))</textarea>
                 </label>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">저장</button>

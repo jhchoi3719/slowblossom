@@ -151,19 +151,19 @@ public static class ApplicationFormEndpoints
             EventId = eventId,
             Name = input.Name.Trim(),
             BirthDate = ApplicationFormValidator.NormalizeBirthDate(input.BirthDate),
-            Gender = input.Gender,
+            Gender = NullIfEmpty(input.Gender),
             Phone = phone,
-            Residence = input.Residence.Trim(),
-            KakaoId = input.KakaoId.Trim(),
-            Education = input.Education.Trim(),
-            Workplace = input.Workplace.Trim(),
-            PreferredAgeRange = input.PreferredAgeRange,
-            Interests = string.Join(", ", input.Interests),
-            ReferralSource = input.ReferralSource,
-            Motivation = input.Motivation.Trim(),
+            Residence = NullIfEmpty(input.Residence),
+            KakaoId = NullIfEmpty(input.KakaoId),
+            Education = NullIfEmpty(input.Education),
+            Workplace = NullIfEmpty(input.Workplace),
+            PreferredAgeRange = NullIfEmpty(input.PreferredAgeRange),
+            Interests = input.Interests.Count == 0 ? null : string.Join(", ", input.Interests),
+            ReferralSource = NullIfEmpty(input.ReferralSource),
+            Motivation = NullIfEmpty(input.Motivation),
             Drinking = input.Drinking,
             Smoking = input.Smoking,
-            SelfIntro = input.SelfIntro.Trim(),
+            SelfIntro = NullIfEmpty(input.SelfIntro),
             IsReturning = input.IsReturning,
             Source = "web",
             AgreedAt = DateTime.Now
@@ -201,6 +201,9 @@ public static class ApplicationFormEndpoints
         ApplicationDraftStore.Clear(context, eventId);
         return Results.Redirect($"/apply/{eventId}/done");
     }
+
+    private static string? NullIfEmpty(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static ApplicationFormInput ReadInput(IFormCollection form)
     {

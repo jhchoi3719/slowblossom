@@ -139,6 +139,45 @@ public class ApplicationFormValidatorTests
         Assert.Empty(ApplicationFormValidator.Validate(input, FixedEvent()));
     }
 
+    private static ApplicationFormInput ReturningMinimal() => new()
+    {
+        IsReturning = true,
+        Name = "홍길동",
+        Phone = "01012345678",
+        AgreePrivacy = true
+    };
+
+    [Fact]
+    public void Returning_applicant_needs_only_name_phone_and_privacy()
+    {
+        Assert.Empty(ApplicationFormValidator.Validate(ReturningMinimal(), FixedEvent()));
+    }
+
+    [Fact]
+    public void Returning_applicant_still_needs_name_phone_and_privacy()
+    {
+        var noName = ReturningMinimal();
+        noName.Name = "";
+        Assert.Contains("이름을 입력해 주세요.", ApplicationFormValidator.Validate(noName, FixedEvent()));
+
+        var badPhone = ReturningMinimal();
+        badPhone.Phone = "123";
+        Assert.NotEmpty(ApplicationFormValidator.Validate(badPhone, FixedEvent()));
+
+        var noPrivacy = ReturningMinimal();
+        noPrivacy.AgreePrivacy = false;
+        Assert.NotEmpty(ApplicationFormValidator.Validate(noPrivacy, FixedEvent()));
+    }
+
+    [Fact]
+    public void Returning_applicant_still_picks_dates_for_poll_event()
+    {
+        var input = ReturningMinimal();
+        Assert.NotEmpty(ApplicationFormValidator.Validate(input, PollEvent()));
+        input.AvailableDates = [Sat1];
+        Assert.Empty(ApplicationFormValidator.Validate(input, PollEvent()));
+    }
+
     [Fact]
     public void DatePoll_event_needs_one_available_date()
     {

@@ -4129,7 +4129,6 @@ select.input {
 
 /* 홈페이지 신청서 (/apply) */
 .apply-notice {
-    white-space: pre-line;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 16px;
@@ -4138,6 +4137,35 @@ select.input {
     font-size: 14px;
     line-height: 1.7;
     color: var(--text);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.apply-notice p {
+    margin: 0 0 10px;
+}
+
+.apply-notice-heading {
+    margin: 22px 0 8px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+.apply-notice-list {
+    margin: 0 0 10px;
+    padding-left: 20px;
+}
+
+.apply-notice-list li {
+    margin-bottom: 4px;
+}
+
+.apply-notice-note {
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 .apply-desc {
@@ -4167,16 +4195,13 @@ select.input {
     padding: 10px;
 }
 
-.apply-file-optional {
+/* 기존 참가자는 이름·연락처·날짜·개인정보 동의만 보인다 */
+.apply-form.is-returning .apply-new-only {
     display: none;
 }
 
-.apply-form.is-returning .apply-file-optional {
-    display: inline;
-}
-
-.apply-form.is-returning .apply-file-item {
-    opacity: 0.7;
+.apply-form.is-returning .apply-two-col {
+    grid-template-columns: 1fr;
 }
 
 .apply-hp {

@@ -272,18 +272,20 @@
         }
 
         var returning = document.getElementById('apply-returning');
+        // 기존 참가자: 이름·연락처(·날짜·개인정보 동의)만 남기고 나머지 질문은 숨기고 필수 해제
+        var newOnlyFields = Array.prototype.filter.call(
+            form.querySelectorAll('.apply-new-only input, .apply-new-only textarea, input.apply-new-only'),
+            function (f) { return f.required; });
         var syncReturning = function () {
-            var skip = returning && returning.checked;
-            Array.prototype.forEach.call(form.querySelectorAll('input[type=file][data-compress]'), function (f) {
-                f.required = !skip;
-            });
-            form.classList.toggle('is-returning', !!skip);
+            var skip = !!(returning && returning.checked);
+            newOnlyFields.forEach(function (f) { f.required = !skip; });
+            form.classList.toggle('is-returning', skip);
         };
         if (returning) returning.addEventListener('change', syncReturning);
         syncReturning();
 
         form.addEventListener('submit', function (e) {
-            if (interests && !interests.querySelector('input:checked')) {
+            if (interests && !form.classList.contains('is-returning') && !interests.querySelector('input:checked')) {
                 e.preventDefault();
                 alert('관심사를 1개 이상 선택해 주세요.');
                 interests.scrollIntoView({ behavior: 'smooth', block: 'center' });
