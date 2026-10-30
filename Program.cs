@@ -111,6 +111,7 @@ var dbPath = Path.Combine(dataDir, "rotationdating.db");
 builder.Services.AddSingleton(new SiteStorageOptions { RootPath = dataDir });
 builder.Services.AddSingleton<SiteUploadService>();
 builder.Services.AddSingleton<ApplicationFileStore>();
+builder.Services.AddSingleton(new AssetVersion(builder.Environment.WebRootPath));
 builder.Services.AddScoped<ApplicationNotifier>();
 ApplicationFormEndpoints.AddRateLimit(builder.Services);
 var sqlite = new SqliteConnectionStringBuilder
