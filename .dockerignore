@@ -9,3 +9,5 @@ obj/
 appsettings.Development.json
 appsettings.Secrets.json
 certs/
+tests/
+docs/

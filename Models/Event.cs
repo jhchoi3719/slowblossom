@@ -9,6 +9,9 @@ public class Event
     public EventVenue Venue { get; set; } = EventVenue.UnoCoffee;
     public DateTime? FinalizedDate { get; set; }
     public string? Location { get; set; }
+    public bool ApplyOpen { get; set; }
+    public string? ApplyTitle { get; set; }
+    public string? ApplyNotice { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     public ICollection<Participant> Participants { get; set; } = [];

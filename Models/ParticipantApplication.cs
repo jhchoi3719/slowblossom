@@ -20,6 +20,17 @@ public class ParticipantApplication
     public string? Password { get; set; }
     public DateTime? ConsentAcceptedAt { get; set; }
     public string? Memo { get; set; }
+    public string? KakaoId { get; set; }
+    public string? Education { get; set; }
+    public string? ReferralSource { get; set; }
+    public string? Motivation { get; set; }
+    public string? SelfIntro { get; set; }
+    public bool IsReturning { get; set; }
+    public string? PhotoFile { get; set; }
+    public string? EmploymentProofFile { get; set; }
+    public string? MarriageCertFile { get; set; }
+    public string? Source { get; set; }
+    public DateTime? AgreedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     public Event? Event { get; set; }

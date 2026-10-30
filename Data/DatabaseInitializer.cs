@@ -20,7 +20,18 @@ public static class DatabaseInitializer
         ["Memo"] = "ALTER TABLE ParticipantApplications ADD COLUMN Memo TEXT NULL",
         ["Password"] = "ALTER TABLE ParticipantApplications ADD COLUMN Password TEXT NULL",
         ["HasArrived"] = "ALTER TABLE ParticipantApplications ADD COLUMN HasArrived INTEGER NOT NULL DEFAULT 0",
-        ["ConsentAcceptedAt"] = "ALTER TABLE ParticipantApplications ADD COLUMN ConsentAcceptedAt TEXT NULL"
+        ["ConsentAcceptedAt"] = "ALTER TABLE ParticipantApplications ADD COLUMN ConsentAcceptedAt TEXT NULL",
+        ["KakaoId"] = "ALTER TABLE ParticipantApplications ADD COLUMN KakaoId TEXT NULL",
+        ["Education"] = "ALTER TABLE ParticipantApplications ADD COLUMN Education TEXT NULL",
+        ["ReferralSource"] = "ALTER TABLE ParticipantApplications ADD COLUMN ReferralSource TEXT NULL",
+        ["Motivation"] = "ALTER TABLE ParticipantApplications ADD COLUMN Motivation TEXT NULL",
+        ["SelfIntro"] = "ALTER TABLE ParticipantApplications ADD COLUMN SelfIntro TEXT NULL",
+        ["IsReturning"] = "ALTER TABLE ParticipantApplications ADD COLUMN IsReturning INTEGER NOT NULL DEFAULT 0",
+        ["PhotoFile"] = "ALTER TABLE ParticipantApplications ADD COLUMN PhotoFile TEXT NULL",
+        ["EmploymentProofFile"] = "ALTER TABLE ParticipantApplications ADD COLUMN EmploymentProofFile TEXT NULL",
+        ["MarriageCertFile"] = "ALTER TABLE ParticipantApplications ADD COLUMN MarriageCertFile TEXT NULL",
+        ["Source"] = "ALTER TABLE ParticipantApplications ADD COLUMN Source TEXT NULL",
+        ["AgreedAt"] = "ALTER TABLE ParticipantApplications ADD COLUMN AgreedAt TEXT NULL"
     };
 
     public static async Task InitializeAsync(AppDbContext db)
@@ -356,6 +367,15 @@ public static class DatabaseInitializer
             await db.Database.ExecuteSqlRawAsync(
                 "UPDATE Events SET Venue = 1 WHERE Kind = 1");
         }
+        if (!columns.Contains("ApplyOpen"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE Events ADD COLUMN ApplyOpen INTEGER NOT NULL DEFAULT 0");
+        if (!columns.Contains("ApplyTitle"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE Events ADD COLUMN ApplyTitle TEXT NULL");
+        if (!columns.Contains("ApplyNotice"))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE Events ADD COLUMN ApplyNotice TEXT NULL");
     }
 
     private static async Task MigrateDatePollTablesAsync(AppDbContext db)
