@@ -16,7 +16,8 @@ public static class ApplicationFormEndpoints
         int eventId,
         HttpContext context,
         IDbContextFactory<AppDbContext> dbFactory,
-        ApplicationFileStore fileStore)
+        ApplicationFileStore fileStore,
+        ApplicationNotifier notifier)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
         var evt = await db.Events
@@ -115,6 +116,7 @@ public static class ApplicationFormEndpoints
 
         db.Applications.Add(application);
         await db.SaveChangesAsync();
+        await notifier.NotifyAsync(evt, application);
 
         ApplicationDraftStore.Clear(context, eventId);
         return Results.Redirect($"/apply/{eventId}/done");
