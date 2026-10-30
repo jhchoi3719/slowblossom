@@ -90,7 +90,7 @@
                         <label class="survey-option-choice-row">
                             <input type="checkbox" name="isReturning" value="true" id="apply-returning"
                                    checked="@(_draft?.IsReturning == true)" />
-                            <span><strong>기존 참가자예요</strong><br />이전에 참가하신 분은 이름과 연락처만 입력하면 돼요.</span>
+                            <span><strong>기존 참가자예요</strong><br />이전에 참가하신 분은 이름·성별·연락처만 입력하면 돼요.</span>
                         </label>
                     </article>
 
@@ -109,7 +109,7 @@
                         </div>
                     </article>
 
-                    <article class="survey-take-item apply-new-only">
+                    <article class="survey-take-item">
                         @Head(2, "성별", null)
                         @Choices("gender", [("남", "남자"), ("여", "여자")], _draft?.Gender)
                     </article>

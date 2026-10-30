@@ -16,6 +16,9 @@ public static class ApplicationFormValidator
         }
 
         Require(input.Name, "이름을 입력해 주세요.");
+        // 성별은 기존 참가자도 받는다: 날짜별 남녀 인원(5:5)을 세야 한다.
+        if (input.Gender is not ("남" or "여"))
+            errors.Add("성별을 선택해 주세요.");
         if (NormalizePhone(input.Phone).Length is not (10 or 11))
             errors.Add("연락처를 숫자로 정확히 입력해 주세요.");
 
@@ -67,8 +70,6 @@ public static class ApplicationFormValidator
     {
         if (NormalizeBirthDate(input.BirthDate) is null)
             errors.Add("생년월일 8자리를 입력해 주세요.");
-        if (input.Gender is not ("남" or "여"))
-            errors.Add("성별을 선택해 주세요.");
         Require(input.Residence, "거주지를 입력해 주세요.");
         Require(input.KakaoId, "카카오톡 ID를 입력해 주세요.");
         Require(input.Education, "최종학력을 입력해 주세요.");

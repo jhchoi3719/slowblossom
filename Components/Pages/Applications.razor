@@ -30,6 +30,12 @@
         <a class="date-tab add-tab" href="@GetPageUrl(extraQuery: "addDate=true")">
             + 날짜
         </a>
+        @if (_venue.HasValue && VenueHelper.IsFixedDateVenue(_venue.Value))
+        {
+            <a class="date-tab add-tab" href="@GetPageUrl(extraQuery: "addDate=true&poll=true")">
+                + 후보 날짜
+            </a>
+        }
     </div>
 
     @if (_venue is null)
@@ -42,10 +48,14 @@
     else if (AddDate)
     {
         <div class="card form-card">
-            <h2>행사 추가 · @VenueHelper.DisplayName(_venue.Value)</h2>
+            <h2>@(Poll ? "후보 날짜 행사 추가" : "행사 추가") · @VenueHelper.DisplayName(_venue.Value)</h2>
+            @if (Poll)
+            {
+                <p class="form-help">여러 날짜를 올리면 신청자가 가능한 날짜를 모두 체크해요. 날짜별로 남녀 인원을 보고 실행일을 확정하세요.</p>
+            }
             <form method="post" action="/applications/add-date">
                 <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
-                @if (VenueHelper.IsFixedDateVenue(_venue.Value))
+                @if (VenueHelper.IsFixedDateVenue(_venue.Value) && !Poll)
                 {
                     <input type="hidden" name="eventKind" value="fixed" />
                     <div class="form-grid">
@@ -214,11 +224,16 @@
                 <div class="poll-date-counts">
                     @foreach (var candidate in _selectedEvent.CandidateDates.OrderBy(c => c.SortOrder))
                     {
-                        var count = _selectedEvent.Applications.Count(a =>
-                            a.Availabilities.Any(v => v.AvailableDate.Date == candidate.EventDate.Date));
-                        <div class="poll-date-count @( _selectedEvent.FinalizedDate?.Date == candidate.EventDate.Date ? "finalized" : "")">
+                        var count = EventDateHelper.CountAvailable(_selectedEvent, candidate.EventDate);
+                        var ready = count.Male >= PollReadyPerGender && count.Female >= PollReadyPerGender;
+                        <div class="poll-date-count @( _selectedEvent.FinalizedDate?.Date == candidate.EventDate.Date ? "finalized" : "") @(ready ? "ready" : "")">
                             <span class="poll-date-label">@candidate.ShortLabel</span>
-                            <span class="poll-date-number">@(count)명</span>
+                            <span class="poll-date-number">@(count.Total)명</span>
+                            <span class="poll-date-gender">남 @count.Male · 여 @count.Female</span>
+                            @if (ready)
+                            {
+                                <span class="poll-date-ready">5:5 가능</span>
+                            }
                         </div>
                     }
                 </div>
@@ -700,6 +715,11 @@
 
     [SupplyParameterFromQuery]
     public bool AddDate { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Poll { get; set; }
+
+    private const int PollReadyPerGender = 5;
 
     [SupplyParameterFromQuery]
     public bool AddApplication { get; set; }

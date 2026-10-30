@@ -512,8 +512,8 @@ app.MapPost("/applications/add-date", async (
 {
     await using var db = await dbFactory.CreateDbContextAsync();
     var parsedVenue = VenueHelper.TryParse(venue) ?? EventVenue.UnoCoffee;
-    var kind = eventKind == "poll" ? EventKind.DatePoll : EventKind.FixedDate;
-    kind = VenueHelper.ToEventKind(parsedVenue);
+    // 수성호텔은 항상 후보일 방식, 다른 장소는 "+ 후보 날짜"로 만들 때만 후보일 방식
+    var kind = eventKind == "poll" ? EventKind.DatePoll : VenueHelper.ToEventKind(parsedVenue);
 
     if (kind == EventKind.DatePoll)
     {
@@ -523,24 +523,24 @@ app.MapPost("/applications/add-date", async (
             .ToList();
 
         if (rawDates.Count == 0)
-            return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.SuseongParam, "pollneed"));
+            return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.ToParam(parsedVenue), "pollneed", poll: true));
 
         if (rawDates.Count != rawDates.Distinct().Count())
-            return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.SuseongParam, "pollduplicate"));
+            return Results.Redirect(ApplicationsAddDateUrl(VenueHelper.ToParam(parsedVenue), "pollduplicate", poll: true));
 
         var dates = rawDates.Distinct().OrderBy(d => d).ToList();
 
         var eventTitle = string.IsNullOrWhiteSpace(title)
-            ? $"{dates[0]:M월} 호텔수성스퀘어 소개팅"
+            ? $"{dates[0]:M월} {VenueHelper.DisplayName(parsedVenue)} 소개팅"
             : title.Trim();
 
         var evt = new Event
         {
             Title = eventTitle,
             Kind = EventKind.DatePoll,
-            Venue = EventVenue.HotelSuseongSquare,
+            Venue = parsedVenue,
             EventDate = dates[0].AddHours(18),
-            Location = VenueHelper.LocationName(EventVenue.HotelSuseongSquare),
+            Location = VenueHelper.LocationName(parsedVenue),
             CandidateDates = dates.Select((d, i) => new EventCandidateDate
             {
                 EventDate = d,
@@ -550,7 +550,7 @@ app.MapPost("/applications/add-date", async (
 
         db.Events.Add(evt);
         await db.SaveChangesAsync();
-        return Results.Redirect(VenueHelper.AdminPageUrl("/applications", EventVenue.HotelSuseongSquare, evt.Id));
+        return Results.Redirect(VenueHelper.AdminPageUrl("/applications", parsedVenue, evt.Id));
     }
 
     if (eventDate is null)
@@ -1394,11 +1394,11 @@ async Task InitializeSiteDataAsync()
 static string ApplicationsUrl(EventVenue venue, int? eventId = null, string? extraQuery = null, string? fragment = null) =>
     VenueHelper.AdminPageUrl("/applications", venue, eventId, extraQuery, fragment);
 
-static string ApplicationsAddDateUrl(string venueParam, string error) =>
+static string ApplicationsAddDateUrl(string venueParam, string error, bool poll = false) =>
     VenueHelper.AdminPageUrl(
         "/applications",
         VenueHelper.TryParse(venueParam) ?? EventVenue.UnoCoffee,
-        extraQuery: $"addDate=true&error={error}");
+        extraQuery: $"addDate=true{(poll ? "&poll=true" : "")}&error={error}");
 
 static string ParticipantsAddDateUrl(EventVenue venue, string error) =>
     VenueHelper.AdminPageUrl("/participants", venue, extraQuery: $"addDate=true&error={error}");

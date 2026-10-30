@@ -7,6 +7,14 @@ public static class EventDateHelper
     public static DateTime? GetEffectiveLoginDate(Event evt) =>
         evt.Kind == EventKind.DatePoll ? evt.FinalizedDate?.Date : evt.EventDate.Date;
 
+    public static (int Male, int Female, int Total) CountAvailable(Event evt, DateTime date)
+    {
+        var available = evt.Applications
+            .Where(a => a.Availabilities.Any(v => v.AvailableDate.Date == date.Date))
+            .ToList();
+        return (available.Count(a => a.Gender == "남"), available.Count(a => a.Gender == "여"), available.Count);
+    }
+
     public static bool IsPollAwaitingFinalization(Event evt) =>
         evt.Kind == EventKind.DatePoll && evt.FinalizedDate is null;
 

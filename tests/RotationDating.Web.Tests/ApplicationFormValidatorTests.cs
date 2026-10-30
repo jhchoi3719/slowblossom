@@ -143,6 +143,7 @@ public class ApplicationFormValidatorTests
     {
         IsReturning = true,
         Name = "홍길동",
+        Gender = "남",
         Phone = "01012345678",
         AgreePrivacy = true
     };
@@ -167,6 +168,14 @@ public class ApplicationFormValidatorTests
         var noPrivacy = ReturningMinimal();
         noPrivacy.AgreePrivacy = false;
         Assert.NotEmpty(ApplicationFormValidator.Validate(noPrivacy, FixedEvent()));
+    }
+
+    [Fact]
+    public void Returning_applicant_still_needs_gender_for_head_counts()
+    {
+        var input = ReturningMinimal();
+        input.Gender = "";
+        Assert.Contains("성별을 선택해 주세요.", ApplicationFormValidator.Validate(input, FixedEvent()));
     }
 
     [Fact]

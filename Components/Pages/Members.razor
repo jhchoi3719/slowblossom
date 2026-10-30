@@ -1,0 +1,110 @@
+@page "/members"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>회원 목록</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="/home" class="back-link">← 메뉴</a>
+        <h1>회원 목록</h1>
+        <p class="subtitle">지금까지 신청한 분들을 연락처 기준으로 묶었어요 · 분홍색 행사는 참가 확정</p>
+    </header>
+
+    <div class="member-toolbar">
+        <a class="btn btn-sm @(_venue is null ? "btn-primary" : "btn-secondary")" href="@Url(null, Q)">전체</a>
+        @foreach (var venue in Enum.GetValues<EventVenue>())
+        {
+            <a class="btn btn-sm @(_venue == venue ? "btn-primary" : "btn-secondary")" href="@Url(venue, Q)">@VenueHelper.DisplayName(venue)</a>
+        }
+        <form method="get" action="/members" class="member-search">
+            @if (_venue.HasValue)
+            {
+                <input type="hidden" name="venue" value="@VenueHelper.ToParam(_venue.Value)" />
+            }
+            <input type="search" name="q" class="input" value="@Q" placeholder="이름, 연락처, 카톡 ID 검색" />
+            <button type="submit" class="btn btn-sm btn-secondary">검색</button>
+        </form>
+    </div>
+
+    <div class="member-columns">
+        @MemberColumn("male", "남", _members.Male)
+        @MemberColumn("female", "여", _members.Female)
+    </div>
+
+    @if (_members.Unknown.Count > 0)
+    {
+        <div class="member-columns">
+            @MemberColumn("unknown", "성별 미입력", _members.Unknown)
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Venue { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Q { get; set; }
+
+    private EventVenue? _venue;
+    private MemberList _members = new([], [], []);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _venue = VenueHelper.TryParse(Venue);
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var applications = await db.Applications.AsNoTracking()
+            .Include(a => a.Event)
+            .ToListAsync();
+
+        _members = MemberDirectory.Build(applications, _venue, Q);
+    }
+
+    private static string Url(EventVenue? venue, string? q)
+    {
+        var query = new List<string>();
+        if (venue.HasValue)
+            query.Add(VenueHelper.VenueQuery(venue.Value));
+        if (!string.IsNullOrWhiteSpace(q))
+            query.Add($"q={Uri.EscapeDataString(q)}");
+        return query.Count == 0 ? "/members" : $"/members?{string.Join("&", query)}";
+    }
+
+    private static RenderFragment MemberColumn(string css, string title, List<Member> members) => @<section class="member-column @css">
+        <h2>@title (@(members.Count)명)</h2>
+        @if (members.Count == 0)
+        {
+            <p class="member-meta">해당하는 회원이 없어요.</p>
+        }
+        @foreach (var member in members)
+        {
+            <article class="member-card">
+                <div class="member-card-head">
+                    <span class="member-name">@member.Name</span>
+                    @if (member.BirthYearLabel is not null)
+                    {
+                        <span class="member-meta">@member.BirthYearLabel</span>
+                    }
+                    <span class="member-meta">신청 @(member.History.Count)회 · 확정 @(member.ConfirmedCount)회</span>
+                </div>
+                <div class="member-meta">
+                    @member.Phone
+                    @if (!string.IsNullOrWhiteSpace(member.KakaoId))
+                    {
+                        <span> · 카톡 @member.KakaoId</span>
+                    }
+                </div>
+                <ul class="member-history">
+                    @foreach (var item in member.History)
+                    {
+                        <li class="@(item.IsConfirmed ? "confirmed" : "")">@VenueHelper.DisplayName(item.Venue) @item.EventLabel</li>
+                    }
+                </ul>
+            </article>
+        }
+    </section>;
+}
