@@ -46,6 +46,21 @@ public sealed class ApplicationFileStore
         return File.Exists(path) ? path : null;
     }
 
+    public static string? FileNameOf(Models.ParticipantApplication app, string kind) => kind switch
+    {
+        "photo" => app.PhotoFile,
+        "employment" => app.EmploymentProofFile,
+        "marriage" => app.MarriageCertFile,
+        _ => null
+    };
+
+    public void DeleteFilesOf(Models.ParticipantApplication app)
+    {
+        Delete(app.PhotoFile);
+        Delete(app.EmploymentProofFile);
+        Delete(app.MarriageCertFile);
+    }
+
     public void Delete(string? fileName)
     {
         var path = GetPath(fileName);

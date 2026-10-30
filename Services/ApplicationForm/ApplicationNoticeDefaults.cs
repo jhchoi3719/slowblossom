@@ -5,9 +5,9 @@ namespace RotationDating.Web.Services.ApplicationForm;
 public static class ApplicationNoticeDefaults
 {
     public static string Title(Event evt) =>
-        string.IsNullOrWhiteSpace(evt.ApplyTitle)
-            ? $"슬로우블러썸 {evt.TabLabel} 신청"
-            : evt.ApplyTitle.Trim();
+        string.IsNullOrWhiteSpace(evt.ApplyTitle) ? DefaultTitle(evt) : evt.ApplyTitle.Trim();
+
+    public static string DefaultTitle(Event evt) => $"슬로우블러썸 {evt.TabLabel} 신청";
 
     public static string Notice(Event evt) =>
         string.IsNullOrWhiteSpace(evt.ApplyNotice) ? DefaultNotice : evt.ApplyNotice.Trim();

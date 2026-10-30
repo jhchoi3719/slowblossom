@@ -71,6 +71,39 @@ public class ApplicationFileStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task DeleteFilesOf_removes_all_three_documents()
+    {
+        var app = new RotationDating.Web.Models.ParticipantApplication
+        {
+            PhotoFile = (await _store.TrySaveAsync(MakeFile("a.jpg", 10))).FileName,
+            EmploymentProofFile = (await _store.TrySaveAsync(MakeFile("b.jpg", 10))).FileName,
+            MarriageCertFile = (await _store.TrySaveAsync(MakeFile("c.png", 10))).FileName
+        };
+
+        _store.DeleteFilesOf(app);
+
+        Assert.Null(_store.GetPath(app.PhotoFile));
+        Assert.Null(_store.GetPath(app.EmploymentProofFile));
+        Assert.Null(_store.GetPath(app.MarriageCertFile));
+    }
+
+    [Theory]
+    [InlineData("photo", "PhotoFile")]
+    [InlineData("employment", "EmploymentProofFile")]
+    [InlineData("marriage", "MarriageCertFile")]
+    [InlineData("other", null)]
+    public void FileNameOf_maps_kind_to_column(string kind, string? property)
+    {
+        var app = new RotationDating.Web.Models.ParticipantApplication
+        {
+            PhotoFile = "PhotoFile",
+            EmploymentProofFile = "EmploymentProofFile",
+            MarriageCertFile = "MarriageCertFile"
+        };
+        Assert.Equal(property, ApplicationFileStore.FileNameOf(app, kind));
+    }
+
+    [Fact]
     public async Task Delete_removes_file()
     {
         var (fileName, _) = await _store.TrySaveAsync(MakeFile("a.png", 10));

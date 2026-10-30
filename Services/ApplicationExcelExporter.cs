@@ -52,7 +52,9 @@ public static class ApplicationExcelExporter
             "성별",
             "연락처",
             "거주지",
-            "직장"
+            "직장",
+            "카카오톡 ID",
+            "최종학력"
         };
 
         if (includeAvailability)
@@ -64,6 +66,11 @@ public static class ApplicationExcelExporter
             "관심사",
             "음주",
             "흡연",
+            "참여경로",
+            "신청동기",
+            "자기소개",
+            "기존 참가자",
+            "신청 경로",
             "연락",
             "확정",
             "메모",
@@ -87,6 +94,8 @@ public static class ApplicationExcelExporter
         SetText(sheet, row, col++, app.Phone);
         SetText(sheet, row, col++, app.Residence);
         SetText(sheet, row, col++, app.Workplace);
+        SetText(sheet, row, col++, app.KakaoId);
+        SetText(sheet, row, col++, app.Education);
 
         if (includeAvailability)
         {
@@ -98,6 +107,11 @@ public static class ApplicationExcelExporter
         SetText(sheet, row, col++, app.Interests);
         SetText(sheet, row, col++, ParticipantApplication.OxLabel(app.Drinking));
         SetText(sheet, row, col++, ParticipantApplication.OxLabel(app.Smoking));
+        SetText(sheet, row, col++, app.ReferralSource);
+        SetText(sheet, row, col++, app.Motivation);
+        SetText(sheet, row, col++, app.SelfIntro);
+        SetText(sheet, row, col++, app.IsReturning ? "O" : "");
+        SetText(sheet, row, col++, app.Source == "web" ? "홈페이지" : "수동");
         SetText(sheet, row, col++, ParticipantApplication.OxLabel(app.AllowContact));
         SetText(sheet, row, col++, app.IsConfirmed ? "확정" : "미확정");
         SetText(sheet, row, col++, app.Memo);

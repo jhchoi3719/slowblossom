@@ -10,6 +10,53 @@ public static class ApplicationFormEndpoints
     public static void Map(WebApplication app)
     {
         app.MapPost("/apply/{eventId:int}/submit", SubmitAsync).DisableAntiforgery();
+
+        app.MapGet("/applications/file/{applicationId:int}/{kind}", GetFileAsync)
+            .RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin));
+        app.MapPost("/applications/apply-settings", SaveApplySettingsAsync)
+            .RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin))
+            .DisableAntiforgery();
+    }
+
+    private static async Task<IResult> GetFileAsync(
+        int applicationId,
+        string kind,
+        HttpContext context,
+        IDbContextFactory<AppDbContext> dbFactory,
+        ApplicationFileStore fileStore)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var application = await db.Applications.AsNoTracking().FirstOrDefaultAsync(a => a.Id == applicationId);
+        var path = application is null ? null : fileStore.GetPath(ApplicationFileStore.FileNameOf(application, kind));
+        if (path is null)
+            return Results.NotFound();
+
+        context.Response.Headers.CacheControl = "private, no-store";
+        var contentType = Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase)
+            ? "image/png"
+            : "image/jpeg";
+        return Results.File(path, contentType);
+    }
+
+    private static async Task<IResult> SaveApplySettingsAsync(
+        HttpContext context,
+        IDbContextFactory<AppDbContext> dbFactory)
+    {
+        var form = await context.Request.ReadFormAsync();
+        if (!int.TryParse(form["eventId"], out var eventId))
+            return Results.Redirect("/applications");
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var evt = await db.Events.FindAsync(eventId);
+        if (evt is null)
+            return Results.Redirect("/applications");
+
+        evt.ApplyOpen = form["applyOpen"].ToString() == "true";
+        evt.ApplyTitle = string.IsNullOrWhiteSpace(form["applyTitle"]) ? null : form["applyTitle"].ToString().Trim();
+        evt.ApplyNotice = string.IsNullOrWhiteSpace(form["applyNotice"]) ? null : form["applyNotice"].ToString().Trim();
+        await db.SaveChangesAsync();
+
+        return Results.Redirect(VenueHelper.AdminPageUrl("/applications", VenueHelper.FromEvent(evt), eventId, "applySaved=true"));
     }
 
     private static async Task<IResult> SubmitAsync(

@@ -6,6 +6,8 @@
 @using RotationDating.Web.Models
 @using RotationDating.Web.Services
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
+@using RotationDating.Web.Services.ApplicationForm
 
 <PageTitle>참가자 신청서</PageTitle>
 
@@ -128,6 +130,42 @@
                 <button type="submit" class="btn btn-sm btn-danger">삭제</button>
             </form>
         </div>
+
+        @if (ApplySaved)
+        {
+            <div class="alert-success">신청 페이지 설정을 저장했습니다.</div>
+        }
+
+        <details class="card form-card apply-settings-card" open="@ApplySaved">
+            <summary>
+                <strong>홈페이지 신청 페이지</strong>
+                <span class="apply-status @(_selectedEvent.ApplyOpen ? "open" : "")">@(_selectedEvent.ApplyOpen ? "신청 받는 중" : "닫힘")</span>
+            </summary>
+            <div class="apply-settings-link">
+                <input type="text" class="input" value="@ApplyUrl(_selectedEvent)" readonly id="apply-url" />
+                <button type="button" class="btn btn-sm btn-secondary" onclick="copyApplyUrl()">링크 복사</button>
+                <a class="btn btn-sm btn-secondary" href="/apply/@_selectedEvent.Id" target="_blank" rel="noopener">미리보기</a>
+            </div>
+            <form method="post" action="/applications/apply-settings" class="apply-settings-form">
+                <input type="hidden" name="eventId" value="@_selectedEvent.Id" />
+                <label class="apply-settings-toggle">
+                    <input type="checkbox" name="applyOpen" value="true" checked="@_selectedEvent.ApplyOpen" />
+                    홈페이지에서 신청 받기
+                </label>
+                <label>
+                    제목 (비워 두면: @ApplicationNoticeDefaults.DefaultTitle(_selectedEvent))
+                    <input type="text" name="applyTitle" class="input" maxlength="100" value="@_selectedEvent.ApplyTitle" />
+                </label>
+                <label>
+                    안내문 (일시·장소·참가비 등 · 비워 두면 기본 안내문)
+                    <textarea name="applyNotice" class="input textarea" rows="10"
+                              placeholder="@ApplicationNoticeDefaults.DefaultNotice">@_selectedEvent.ApplyNotice</textarea>
+                </label>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </details>
 
         @if (DateUpdated)
         {
@@ -435,6 +473,14 @@
                             {
                                 <span class="participant-tag">@app.BirthDate</span>
                             }
+                            @if (app.Source == "web")
+                            {
+                                <span class="participant-tag web-tag">홈페이지 신청</span>
+                            }
+                            @if (app.IsReturning)
+                            {
+                                <span class="participant-tag returning-tag">기존 참가자</span>
+                            }
                         </div>
                         <div class="participant-body">
                             @if (!string.IsNullOrWhiteSpace(app.Phone))
@@ -460,6 +506,20 @@
                                     <span class="value">@app.Workplace</span>
                                 </div>
                             }
+                            @if (!string.IsNullOrWhiteSpace(app.KakaoId))
+                            {
+                                <div class="info-row">
+                                    <span class="label">카카오톡 ID</span>
+                                    <span class="value">@app.KakaoId</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.Education))
+                            {
+                                <div class="info-row">
+                                    <span class="label">최종학력</span>
+                                    <span class="value">@app.Education</span>
+                                </div>
+                            }
                             @if (!string.IsNullOrWhiteSpace(app.PreferredAgeRange))
                             {
                                 <div class="info-row">
@@ -482,6 +542,44 @@
                                 <span class="label">흡연</span>
                                 <span class="value ox-value">@ParticipantApplication.OxLabel(app.Smoking)</span>
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(app.ReferralSource))
+                            {
+                                <div class="info-row">
+                                    <span class="label">참여경로</span>
+                                    <span class="value">@app.ReferralSource</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.Motivation))
+                            {
+                                <div class="info-row">
+                                    <span class="label">신청동기</span>
+                                    <span class="value multiline-value">@app.Motivation</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(app.SelfIntro))
+                            {
+                                <div class="info-row">
+                                    <span class="label">자기소개</span>
+                                    <span class="value multiline-value">@app.SelfIntro</span>
+                                </div>
+                            }
+                            @if (app.PhotoFile is not null || app.EmploymentProofFile is not null || app.MarriageCertFile is not null)
+                            {
+                                <div class="info-row">
+                                    <span class="label">첨부</span>
+                                    <div class="application-docs">
+                                        @foreach (var (kind, label, file) in DocumentsOf(app))
+                                        {
+                                            if (file is null)
+                                                continue;
+                                            <a class="application-doc" href="/applications/file/@app.Id/@kind" target="_blank" rel="noopener">
+                                                <img src="/applications/file/@app.Id/@kind" alt="@label" loading="lazy" />
+                                                <span>@label</span>
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            }
                             @if (_selectedEvent.Kind == EventKind.DatePoll)
                             {
                                 <div class="info-row">
@@ -623,6 +721,18 @@
 
     [SupplyParameterFromQuery]
     public bool DateUpdated { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool ApplySaved { get; set; }
+
+    private string ApplyUrl(Event evt) => $"{Navigation.BaseUri.TrimEnd('/')}/apply/{evt.Id}";
+
+    private static (string Kind, string Label, string? File)[] DocumentsOf(ParticipantApplication app) =>
+    [
+        ("photo", "본인 사진", app.PhotoFile),
+        ("employment", "재직 증빙", app.EmploymentProofFile),
+        ("marriage", "혼인관계", app.MarriageCertFile)
+    ];
 
     [SupplyParameterFromQuery]
     public string? Error { get; set; }

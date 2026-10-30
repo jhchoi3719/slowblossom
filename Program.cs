@@ -485,7 +485,7 @@ app.MapGet("/applications/export", async (int eventId, IDbContextFactory<AppDbCo
     return Results.File(bytes, ApplicationExcelExporter.ContentType, ApplicationExcelExporter.FileName(evt));
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin));
 
-app.MapPost("/applications/delete", async ([FromForm] int applicationId, [FromForm] int eventId, IDbContextFactory<AppDbContext> dbFactory) =>
+app.MapPost("/applications/delete", async ([FromForm] int applicationId, [FromForm] int eventId, IDbContextFactory<AppDbContext> dbFactory, ApplicationFileStore fileStore) =>
 {
     await using var db = await dbFactory.CreateDbContextAsync();
     var application = await db.Applications.FindAsync(applicationId);
@@ -493,6 +493,7 @@ app.MapPost("/applications/delete", async ([FromForm] int applicationId, [FromFo
     {
         db.Applications.Remove(application);
         await db.SaveChangesAsync();
+        fileStore.DeleteFilesOf(application);
     }
 
     return Results.Redirect(await ApplicationsUrlForEventAsync(dbFactory, eventId));
@@ -834,15 +835,18 @@ app.MapPost("/events/delete", async (
     [FromForm] int eventId,
     [FromForm] string returnPage,
     [FromForm] string? venue,
-    IDbContextFactory<AppDbContext> dbFactory) =>
+    IDbContextFactory<AppDbContext> dbFactory,
+    ApplicationFileStore fileStore) =>
 {
     await using var db = await dbFactory.CreateDbContextAsync();
-    var evt = await db.Events.FindAsync(eventId);
+    var evt = await db.Events.Include(e => e.Applications).FirstOrDefaultAsync(e => e.Id == eventId);
     var fallbackVenue = evt is null ? EventVenue.UnoCoffee : VenueHelper.FromEvent(evt);
     if (evt is not null)
     {
+        var applications = evt.Applications.ToList();
         db.Events.Remove(evt);
         await db.SaveChangesAsync();
+        applications.ForEach(fileStore.DeleteFilesOf);
     }
 
     var parsedVenue = VenueHelper.TryParse(venue) ?? fallbackVenue;
