@@ -12,6 +12,7 @@ using RotationDating.Web.Components;
 using RotationDating.Web.Data;
 using RotationDating.Web.Models;
 using RotationDating.Web.Services;
+using RotationDating.Web.Services.ApplicationForm;
 using RotationDating.Web.Services.MailNotification;
 
 // Render free instances hit inotify limits if config/static file watchers are enabled.
@@ -109,6 +110,7 @@ catch
 var dbPath = Path.Combine(dataDir, "rotationdating.db");
 builder.Services.AddSingleton(new SiteStorageOptions { RootPath = dataDir });
 builder.Services.AddSingleton<SiteUploadService>();
+builder.Services.AddSingleton<ApplicationFileStore>();
 var sqlite = new SqliteConnectionStringBuilder
 {
     DataSource = dbPath,
