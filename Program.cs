@@ -112,6 +112,7 @@ builder.Services.AddSingleton(new SiteStorageOptions { RootPath = dataDir });
 builder.Services.AddSingleton<SiteUploadService>();
 builder.Services.AddSingleton<ApplicationFileStore>();
 builder.Services.AddScoped<ApplicationNotifier>();
+ApplicationFormEndpoints.AddRateLimit(builder.Services);
 var sqlite = new SqliteConnectionStringBuilder
 {
     DataSource = dbPath,
@@ -142,6 +143,7 @@ app.UseAntiforgery();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGet("/ping", () => Results.Text("ok", "text/plain"));
 

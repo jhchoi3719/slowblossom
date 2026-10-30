@@ -171,6 +171,30 @@ public class ApplicationFormValidatorTests
         Assert.Equal(ok, ApplicationFormValidator.Validate(input, FixedEvent()).Count == 0);
     }
 
+    [Theory]
+    [InlineData("Name", 51)]
+    [InlineData("KakaoId", 51)]
+    [InlineData("Residence", 101)]
+    [InlineData("Education", 101)]
+    [InlineData("Workplace", 201)]
+    [InlineData("Motivation", 2001)]
+    [InlineData("SelfIntro", 2001)]
+    public void Overlong_text_fails(string field, int length)
+    {
+        var input = Valid();
+        typeof(ApplicationFormInput).GetProperty(field)!.SetValue(input, new string('가', length));
+        Assert.Contains(ApplicationFormValidator.Validate(input, FixedEvent()), e => e.Contains("너무 길어요"));
+    }
+
+    [Fact]
+    public void Text_at_the_limit_passes()
+    {
+        var input = Valid();
+        input.SelfIntro = new string('가', 2000);
+        input.Workplace = new string('가', 200);
+        Assert.Empty(ApplicationFormValidator.Validate(input, FixedEvent()));
+    }
+
     [Fact]
     public void Missing_drinking_answer_fails()
     {

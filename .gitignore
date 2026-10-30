@@ -11,3 +11,7 @@ appsettings.Secrets.json
 mail-notification-settings.json
 mail-notification-state.json
 certs/
+
+# 로컬 실행 시 저장되는 업로드/신청서 서류
+private/
+uploads/

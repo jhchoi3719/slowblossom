@@ -20,10 +20,50 @@ public class ApplicationFileStoreTests : IDisposable
             Directory.Delete(_root, recursive: true);
     }
 
-    private static IFormFile MakeFile(string name, long size)
+    private static readonly byte[] JpegHeader = [0xFF, 0xD8, 0xFF, 0xE0];
+    private static readonly byte[] PngHeader = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+    private static IFormFile MakeFile(string name, long size, byte[]? header = null)
     {
-        var stream = new MemoryStream(new byte[size]);
+        var bytes = new byte[size];
+        header ??= name.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? PngHeader : JpegHeader;
+        if (size > 0)
+            Array.Copy(header, bytes, Math.Min(header.Length, bytes.Length));
+        var stream = new MemoryStream(bytes);
         return new FormFile(stream, 0, size, "file", name);
+    }
+
+    [Fact]
+    public async Task Refuses_to_save_when_disk_is_nearly_full()
+    {
+        var store = new ApplicationFileStore(new SiteStorageOptions { RootPath = _root }, minFreeBytes: long.MaxValue);
+        var (fileName, error) = await store.TrySaveAsync(MakeFile("a.jpg", 100));
+        Assert.Equal("disk", error);
+        Assert.Null(fileName);
+    }
+
+    [Fact]
+    public async Task Non_image_bytes_named_jpg_are_rejected()
+    {
+        var (fileName, error) = await _store.TrySaveAsync(MakeFile("fake.jpg", 100, header: [0x50, 0x4B, 0x03, 0x04]));
+        Assert.Equal("type", error);
+        Assert.Null(fileName);
+    }
+
+    [Fact]
+    public async Task Png_bytes_named_jpg_are_accepted_with_png_extension()
+    {
+        var (fileName, error) = await _store.TrySaveAsync(MakeFile("shot.jpg", 100, header: PngHeader));
+        Assert.Null(error);
+        Assert.EndsWith(".png", fileName);
+    }
+
+    [Fact]
+    public async Task Jpeg_without_extension_is_accepted()
+    {
+        var (fileName, error) = await _store.TrySaveAsync(MakeFile("image", 100, header: JpegHeader));
+        Assert.Null(error);
+        Assert.EndsWith(".jpg", fileName);
     }
 
     [Fact]
@@ -55,7 +95,7 @@ public class ApplicationFileStoreTests : IDisposable
     [Fact]
     public async Task Gif_is_rejected()
     {
-        var (_, error) = await _store.TrySaveAsync(MakeFile("a.gif", 10));
+        var (_, error) = await _store.TrySaveAsync(MakeFile("a.gif", 10, header: "GIF89a"u8.ToArray()));
         Assert.Equal("type", error);
     }
 

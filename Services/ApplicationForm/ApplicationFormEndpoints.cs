@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using RotationDating.Web.Data;
 using RotationDating.Web.Models;
@@ -7,9 +9,37 @@ namespace RotationDating.Web.Services.ApplicationForm;
 
 public static class ApplicationFormEndpoints
 {
+    public const string SubmitRateLimitPolicy = "apply-submit";
+
+    // 같은 IP에서 10분에 10번까지만 제출 (사진으로 디스크를 채우는 스크립트 방지)
+    public static void AddRateLimit(IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            options.AddPolicy(SubmitRateLimitPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(10),
+                        QueueLimit = 0
+                    }));
+            options.OnRejected = (context, _) =>
+            {
+                var path = context.HttpContext.Request.Path.Value ?? "/apply";
+                var page = path.EndsWith("/submit", StringComparison.Ordinal) ? path[..^"/submit".Length] : "/apply";
+                context.HttpContext.Response.Redirect($"{page}?error=rate");
+                return ValueTask.CompletedTask;
+            };
+        });
+    }
+
     public static void Map(WebApplication app)
     {
-        app.MapPost("/apply/{eventId:int}/submit", SubmitAsync).DisableAntiforgery();
+        app.MapPost("/apply/{eventId:int}/submit", SubmitAsync)
+            .RequireRateLimiting(SubmitRateLimitPolicy)
+            .DisableAntiforgery();
 
         app.MapGet("/applications/file/{applicationId:int}/{kind}", GetFileAsync)
             .RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin));
@@ -149,9 +179,12 @@ public static class ApplicationFormEndpoints
         {
             saved.ForEach(fileStore.Delete);
             ApplicationDraftStore.Save(context, eventId, input,
-                [ex.Message == "size"
-                    ? "사진 한 장의 용량은 10MB 이하여야 해요."
-                    : "사진은 jpg, jpeg, png 파일만 첨부할 수 있어요."]);
+                [ex.Message switch
+                {
+                    "size" => "사진 한 장의 용량은 10MB 이하여야 해요.",
+                    "disk" => "지금은 사진을 받을 수 없어요. 잠시 후 다시 시도하거나 카카오톡 채널 '싱싱한팜'으로 문의해 주세요.",
+                    _ => "사진은 jpg, jpeg, png 파일만 첨부할 수 있어요."
+                }]);
             return Results.Redirect($"/apply/{eventId}?error=1");
         }
 

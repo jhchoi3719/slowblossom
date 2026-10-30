@@ -11,3 +11,5 @@ appsettings.Secrets.json
 certs/
 tests/
 docs/
+private/
+uploads/

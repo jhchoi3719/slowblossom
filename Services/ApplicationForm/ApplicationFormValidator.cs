@@ -66,6 +66,24 @@ public static class ApplicationFormValidator
         if (!(input.AgreeSelection && input.AgreeMarriage && input.AgreePhoto && input.AgreeRefund && input.AgreePrivacy))
             errors.Add("안내 및 동의 항목(18~22번)에 모두 동의해 주세요.");
 
+        // 화면의 maxlength와 같은 한도. 스크립트로 보낸 긴 글이 DB와 엑셀을 망가뜨리지 않게 막는다.
+        foreach (var (value, max, label) in new[]
+        {
+            (input.Name, 50, "이름"),
+            (input.BirthDate, 10, "생년월일"),
+            (input.Phone, 13, "연락처"),
+            (input.KakaoId, 50, "카카오톡 ID"),
+            (input.Residence, 100, "거주지"),
+            (input.Education, 100, "최종학력"),
+            (input.Workplace, 200, "직장"),
+            (input.Motivation, 2000, "신청동기"),
+            (input.SelfIntro, 2000, "자기소개")
+        })
+        {
+            if ((value?.Length ?? 0) > max)
+                errors.Add($"{label}이(가) 너무 길어요. {max}자 이내로 입력해 주세요.");
+        }
+
         return errors;
     }
 

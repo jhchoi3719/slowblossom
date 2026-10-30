@@ -248,9 +248,15 @@
         if (!string.IsNullOrEmpty(Error) && HttpContextAccessor.HttpContext is { } httpContext)
         {
             _draft = ApplicationDraftStore.LoadDraft(httpContext, EventId);
-            _errors = Error == "duplicate"
-                ? ["이미 신청하셨어요. 수정이 필요하면 카카오톡 채널로 연락 주세요."]
-                : ApplicationDraftStore.LoadErrors(httpContext, EventId);
+            _errors = Error switch
+            {
+                "duplicate" => ["이미 신청하셨어요. 수정이 필요하면 카카오톡 채널로 연락 주세요."],
+                "rate" => ["짧은 시간에 너무 많이 제출되었어요. 10분 뒤에 다시 시도해 주세요."],
+                _ => ApplicationDraftStore.LoadErrors(httpContext, EventId)
+            };
+            // 서버가 재시작되어 세션이 사라졌을 때도 빈 화면 대신 안내를 보여준다.
+            if (_errors.Count == 0)
+                _errors = ["신청이 완료되지 않았어요. 번거로우시겠지만 다시 작성해 주세요."];
         }
     }
 
