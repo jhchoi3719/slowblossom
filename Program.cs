@@ -1351,6 +1351,7 @@ app.MapPost("/admin/mail-notify/check-now", async (NaverImapMailMonitor mailMoni
 }).RequireAuthorization(policy => policy.RequireRole(AuthRoles.Admin)).DisableAntiforgery();
 
 SiteAdminEndpoints.Map(app);
+ApplicationFormEndpoints.Map(app);
 
 app.MapRazorComponents<App>();
 

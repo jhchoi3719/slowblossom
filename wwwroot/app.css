@@ -4126,3 +4126,83 @@ select.input {
     font-weight: 700;
     text-decoration: none;
 }
+
+/* 홈페이지 신청서 (/apply) */
+.apply-notice {
+    white-space: pre-line;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 18px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+}
+
+.apply-desc {
+    white-space: pre-line;
+}
+
+.apply-errors ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.apply-errors p {
+    margin: 8px 0 0;
+}
+
+.apply-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.apply-returning {
+    background: var(--primary-soft);
+}
+
+.apply-file-input {
+    padding: 10px;
+}
+
+.apply-file-optional {
+    display: none;
+}
+
+.apply-form.is-returning .apply-file-optional {
+    display: inline;
+}
+
+.apply-form.is-returning .apply-file-item {
+    opacity: 0.7;
+}
+
+.apply-hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.apply-interests input:disabled + span {
+    color: var(--text-muted);
+}
+
+.apply-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.apply-done-card p {
+    line-height: 1.7;
+}
+
+@media (max-width: 420px) {
+    .apply-two-col {
+        grid-template-columns: 1fr;
+    }
+}

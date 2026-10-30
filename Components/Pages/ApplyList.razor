@@ -1,0 +1,49 @@
+@page "/apply"
+@layout Layout.SurveyLayout
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Services.ApplicationForm
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>참가 신청</PageTitle>
+
+<div class="survey-public-page">
+    <div class="survey-public-card">
+        <h1>참가 신청</h1>
+        @if (_events.Count == 0)
+        {
+            <p>지금은 신청을 받고 있는 모임이 없어요. 다음 모임 소식은 인스타그램과 카카오톡 채널 '싱싱한팜'에서 안내드릴게요.</p>
+        }
+        else
+        {
+            <p>신청할 모임을 선택해 주세요.</p>
+            <div class="apply-list">
+                @foreach (var evt in _events)
+                {
+                    <a class="btn btn-primary apply-list-item" href="/apply/@evt.Id">
+                        @ApplicationNoticeDefaults.Title(evt)
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Event> _events = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _events = await db.Events.AsNoTracking()
+            .Include(e => e.CandidateDates)
+            .Where(e => e.ApplyOpen)
+            .OrderBy(e => e.EventDate)
+            .ToListAsync();
+
+        if (_events.Count == 1)
+            Navigation.NavigateTo($"/apply/{_events[0].Id}");
+    }
+}

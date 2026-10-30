@@ -211,11 +211,97 @@
         });
     }
 
+    // 홈페이지 신청서: 사진 압축, 관심사 개수 제한, 기존 참가자 서류 생략
+    var APPLY_MAX_SIDE = 1600;
+    var APPLY_QUALITY = 0.82;
+
+    function compressImage(file) {
+        if (!window.createImageBitmap || !window.DataTransfer || !/^image\//.test(file.type))
+            return Promise.resolve(file);
+        return createImageBitmap(file).then(function (bitmap) {
+            var scale = Math.min(1, APPLY_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.round(bitmap.width * scale);
+            canvas.height = Math.round(bitmap.height * scale);
+            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            return new Promise(function (resolve) {
+                canvas.toBlob(function (blob) {
+                    if (!blob || blob.size >= file.size) { resolve(file); return; }
+                    var name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                    resolve(new File([blob], name, { type: 'image/jpeg' }));
+                }, 'image/jpeg', APPLY_QUALITY);
+            });
+        }).catch(function () { return file; });
+    }
+
+    function initApplyForm() {
+        var form = document.getElementById('apply-form');
+        if (!form) return;
+        var pending = 0;
+        var submit = document.getElementById('apply-submit');
+
+        form.addEventListener('change', function (e) {
+            var input = e.target;
+            if (input && input.matches('input[type=file][data-compress]') && input.files && input.files[0]) {
+                var original = input.files[0];
+                pending++;
+                if (submit) submit.disabled = true;
+                compressImage(original).then(function (file) {
+                    if (file !== original) {
+                        var dt = new DataTransfer();
+                        dt.items.add(file);
+                        input.files = dt.files;
+                    }
+                }).finally(function () {
+                    pending--;
+                    if (submit && pending === 0) submit.disabled = false;
+                });
+            }
+        });
+
+        var interests = form.querySelector('.apply-interests');
+        if (interests) {
+            var max = parseInt(interests.getAttribute('data-max'), 10) || 3;
+            var boxes = interests.querySelectorAll('input[type=checkbox]');
+            var sync = function () {
+                var count = Array.prototype.filter.call(boxes, function (b) { return b.checked; }).length;
+                Array.prototype.forEach.call(boxes, function (b) { b.disabled = !b.checked && count >= max; });
+            };
+            interests.addEventListener('change', sync);
+            sync();
+        }
+
+        var returning = document.getElementById('apply-returning');
+        var syncReturning = function () {
+            var skip = returning && returning.checked;
+            Array.prototype.forEach.call(form.querySelectorAll('input[type=file][data-compress]'), function (f) {
+                f.required = !skip;
+            });
+            form.classList.toggle('is-returning', !!skip);
+        };
+        if (returning) returning.addEventListener('change', syncReturning);
+        syncReturning();
+
+        form.addEventListener('submit', function (e) {
+            if (interests && !interests.querySelector('input:checked')) {
+                e.preventDefault();
+                alert('관심사를 1개 이상 선택해 주세요.');
+                interests.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            if (submit) {
+                submit.disabled = true;
+                submit.textContent = '보내는 중...';
+            }
+        });
+    }
+
     function boot() {
         initSiteHeader();
         initGalleryTabs();
         initGalleryViewer();
         initMultiFilePickers();
+        initApplyForm();
     }
 
     if (document.readyState === 'loading')
