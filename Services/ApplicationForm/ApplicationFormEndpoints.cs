@@ -11,17 +11,30 @@ public static class ApplicationFormEndpoints
 {
     public const string SubmitRateLimitPolicy = "apply-submit";
 
-    // 같은 IP에서 10분에 10번까지만 제출 (사진으로 디스크를 채우는 스크립트 방지)
+    // 같은 접속자는 10분에 30번까지만 제출 (사진으로 디스크를 채우는 스크립트 방지).
+    // 통신사·와이파이를 함께 쓰는 실제 신청자들이 막히지 않도록 넉넉하게 잡는다.
+    public const int SubmitsPerWindow = 30;
+
+    // Render 앞단의 Cloudflare를 거치면 접속 주소가 Cloudflare 서버로 보여 모든 신청자가
+    // 한 묶음으로 세어진다. Cloudflare가 넣어 주는 실제 방문자 주소를 먼저 쓴다.
+    public static string ClientKey(HttpContext context)
+    {
+        var cf = context.Request.Headers["CF-Connecting-IP"].ToString().Trim();
+        if (System.Net.IPAddress.TryParse(cf, out var visitor))
+            return visitor.ToString();
+        return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
+
     public static void AddRateLimit(IServiceCollection services)
     {
         services.AddRateLimiter(options =>
         {
             options.AddPolicy(SubmitRateLimitPolicy, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
-                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    ClientKey(context),
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 10,
+                        PermitLimit = SubmitsPerWindow,
                         Window = TimeSpan.FromMinutes(10),
                         QueueLimit = 0
                     }));
@@ -61,7 +74,9 @@ public static class ApplicationFormEndpoints
         if (path is null)
             return Results.NotFound();
 
-        context.Response.Headers.CacheControl = "private, no-store";
+        // 파일 이름은 바뀌지 않는 GUID라서 관리자 브라우저에 오래 보관해도 안전하다 (공용 캐시는 금지).
+        context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
+        context.Response.Headers.XContentTypeOptions = "nosniff";
         var contentType = Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase)
             ? "image/png"
             : "image/jpeg";
@@ -83,7 +98,7 @@ public static class ApplicationFormEndpoints
 
         evt.ApplyOpen = form["applyOpen"].ToString() == "true";
         evt.ApplyTitle = string.IsNullOrWhiteSpace(form["applyTitle"]) ? null : form["applyTitle"].ToString().Trim();
-        evt.ApplyNotice = string.IsNullOrWhiteSpace(form["applyNotice"]) ? null : form["applyNotice"].ToString().Trim();
+        evt.ApplyNotice = ApplicationNoticeDefaults.ToStored(form["applyNotice"].ToString());
         await db.SaveChangesAsync();
 
         return Results.Redirect(VenueHelper.AdminPageUrl("/applications", VenueHelper.FromEvent(evt), eventId, "applySaved=true"));
@@ -113,6 +128,12 @@ public static class ApplicationFormEndpoints
         var employmentProof = form.Files.GetFile("employmentProof");
         var marriageCert = form.Files.GetFile("marriageCert");
         var input = ReadInput(form);
+        if (input.IsReturning)
+        {
+            // 숨겨진 칸에 남은 사진·답변은 받지 않는다 (보이지 않는 사진 오류로 막히는 일 방지).
+            input.KeepOnlyReturningFields();
+            photo = employmentProof = marriageCert = null;
+        }
         input.HasPhoto = photo is { Length: > 0 };
         input.HasEmploymentProof = employmentProof is { Length: > 0 };
         input.HasMarriageCert = marriageCert is { Length: > 0 };

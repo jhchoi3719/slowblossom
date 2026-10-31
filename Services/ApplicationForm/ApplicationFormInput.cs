@@ -29,4 +29,15 @@ public sealed class ApplicationFormInput
     public bool HasPhoto { get; set; }
     public bool HasEmploymentProof { get; set; }
     public bool HasMarriageCert { get; set; }
+
+    // 기존 참가자는 이름·성별·연락처·날짜·개인정보 동의만 받는다. 숨겨진 칸에 남은 값은 버린다.
+    public void KeepOnlyReturningFields()
+    {
+        BirthDate = Residence = KakaoId = Education = Workplace = "";
+        PreferredAgeRange = ReferralSource = Motivation = SelfIntro = "";
+        Interests = [];
+        Drinking = Smoking = null;
+        AgreeSelection = AgreeMarriage = AgreePhoto = AgreeRefund = false;
+        HasPhoto = HasEmploymentProof = HasMarriageCert = false;
+    }
 }

@@ -7,6 +7,17 @@ public static class ApplicationNoticeDefaults
     public static string Title(Event evt) =>
         string.IsNullOrWhiteSpace(evt.ApplyTitle) ? DefaultTitle(evt) : evt.ApplyTitle.Trim();
 
+    // 관리 화면에서 기본 안내문을 그대로 저장하면 "기본값 사용"(null)으로 둔다.
+    public static string? ToStored(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        static string Collapse(string s) => string.Join(' ', s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var trimmed = text.Trim();
+        var sameAsDefault = Collapse(ApplicationNoticeFormatter.ToEditableText(trimmed)) == Collapse(ApplicationNoticeFormatter.ToEditableText(DefaultNotice));
+        return sameAsDefault ? null : trimmed;
+    }
+
     public static string DefaultTitle(Event evt) => $"슬로우블러썸 {evt.TabLabel} 신청";
 
     public static string Notice(Event evt) =>

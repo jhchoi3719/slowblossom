@@ -494,7 +494,14 @@
                             }
                             @if (app.IsReturning)
                             {
-                                <span class="participant-tag returning-tag">기존 참가자</span>
+                                @if (_phonesWithHistory.Contains(ApplicationFormValidator.NormalizePhone(app.Phone)))
+                                {
+                                    <span class="participant-tag returning-tag">기존 참가자 · 이전 기록 확인됨</span>
+                                }
+                                else
+                                {
+                                    <span class="participant-tag returning-unverified-tag">⚠ 기존 참가자 · 이전 기록 없음</span>
+                                }
                             }
                         </div>
                         <div class="participant-body">
@@ -587,10 +594,7 @@
                                         {
                                             if (file is null)
                                                 continue;
-                                            <a class="application-doc" href="/applications/file/@app.Id/@kind" target="_blank" rel="noopener">
-                                                <img src="/applications/file/@app.Id/@kind" alt="@label" loading="lazy" />
-                                                <span>@label</span>
-                                            </a>
+                                            <a class="btn btn-sm btn-secondary application-doc-link" href="/applications/file/@app.Id/@kind" target="_blank" rel="noopener">@label 보기</a>
                                         }
                                     </div>
                                 </div>
@@ -721,6 +725,9 @@
 
     private const int PollReadyPerGender = 5;
 
+    private List<ParticipantApplication> _allApplications = [];
+    private HashSet<string> _phonesWithHistory = [];
+
     [SupplyParameterFromQuery]
     public bool AddApplication { get; set; }
 
@@ -832,6 +839,7 @@
         _events = _venue.HasValue
             ? VenueHelper.FilterByVenue(allEvents, _venue.Value).ToList()
             : [];
+        _allApplications = allEvents.SelectMany(e => e.Applications).ToList();
 
         if (EventId.HasValue)
             _selectedEvent = _events.FirstOrDefault(e => e.Id == EventId);
@@ -841,7 +849,10 @@
             EventId = _selectedEvent.Id;
         }
 
-        _visibleApplications = (_selectedEvent?.Applications ?? [])
+        if (_selectedEvent is not null)
+            _phonesWithHistory = MemberDirectory.PhonesWithHistory(_allApplications, _selectedEvent.Id);
+
+        _visibleApplications =(_selectedEvent?.Applications ?? [])
             .Where(a => string.IsNullOrWhiteSpace(Gender) || a.Gender == Gender)
             .Where(a => Confirmed switch
             {

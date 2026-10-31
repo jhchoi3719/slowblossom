@@ -214,6 +214,7 @@
     // 홈페이지 신청서: 사진 압축, 관심사 개수 제한, 기존 참가자 서류 생략
     var APPLY_MAX_SIDE = 1600;
     var APPLY_QUALITY = 0.82;
+    var APPLY_MAX_BYTES = 10 * 1024 * 1024;
 
     function compressImage(file) {
         if (!window.createImageBitmap || !window.DataTransfer || !/^image\//.test(file.type))
@@ -223,10 +224,15 @@
             var canvas = document.createElement('canvas');
             canvas.width = Math.round(bitmap.width * scale);
             canvas.height = Math.round(bitmap.height * scale);
-            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            var accepted = /^image\/(jpeg|png)$/.test(file.type);
             return new Promise(function (resolve) {
                 canvas.toBlob(function (blob) {
-                    if (!blob || blob.size >= file.size) { resolve(file); return; }
+                    // jpg/png이면서 원본이 더 작을 때만 원본 유지. WebP·HEIC 등은 항상 jpg로 바꾼다.
+                    if (!blob || (accepted && blob.size >= file.size)) { resolve(file); return; }
                     var name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
                     resolve(new File([blob], name, { type: 'image/jpeg' }));
                 }, 'image/jpeg', APPLY_QUALITY);
@@ -273,13 +279,13 @@
 
         var returning = document.getElementById('apply-returning');
         // 기존 참가자: 이름·연락처(·날짜·개인정보 동의)만 남기고 나머지 질문은 숨기고 필수 해제
-        var newOnlyFields = Array.prototype.filter.call(
-            form.querySelectorAll('.apply-new-only input, .apply-new-only textarea, input.apply-new-only'),
-            function (f) { return f.required; });
+        // 숨긴 칸은 꺼 둔다(disabled): 필수 검사에서도 빠지고, 고른 사진도 전송되지 않는다.
+        var newOnlyFields = form.querySelectorAll('.apply-new-only input, .apply-new-only textarea, input.apply-new-only');
         var syncReturning = function () {
             var skip = !!(returning && returning.checked);
-            newOnlyFields.forEach(function (f) { f.required = !skip; });
+            Array.prototype.forEach.call(newOnlyFields, function (f) { f.disabled = skip; });
             form.classList.toggle('is-returning', skip);
+            if (interests && !skip) interests.dispatchEvent(new Event('change'));
         };
         if (returning) returning.addEventListener('change', syncReturning);
         syncReturning();
@@ -298,9 +304,26 @@
                 interests.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
+            var tooBig = Array.prototype.filter.call(form.querySelectorAll('input[type=file]:not(:disabled)'), function (f) {
+                return f.files && f.files[0] && f.files[0].size > APPLY_MAX_BYTES;
+            });
+            if (tooBig.length > 0) {
+                e.preventDefault();
+                alert('10MB가 넘는 사진이 있어요. 다른 사진을 골라 주세요.');
+                tooBig[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
             if (submit) {
                 submit.disabled = true;
                 submit.textContent = '보내는 중...';
+            }
+        });
+
+        // 뒤로 가기로 돌아왔을 때 '보내는 중...'에 멈춰 있지 않게 한다.
+        window.addEventListener('pageshow', function () {
+            if (submit && pending === 0) {
+                submit.disabled = false;
+                submit.textContent = '신청하기';
             }
         });
     }

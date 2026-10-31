@@ -28,15 +28,16 @@ public sealed class ApplicationNotifier
         return string.Join("\n", lines);
     }
 
-    // 알림 실패가 신청 저장을 막으면 안 된다.
+    // 알림 실패나 지연이 신청 저장·완료 화면을 막으면 안 된다 (최대 5초만 기다린다).
     public async Task NotifyAsync(Event evt, ParticipantApplication app)
     {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
-            if (!await _telegram.IsConfiguredAsync())
+            if (!await _telegram.IsConfiguredAsync(timeout.Token))
                 return;
 
-            var result = await _telegram.SendMessageAsync(BuildMessage(evt, app));
+            var result = await _telegram.SendMessageAsync(BuildMessage(evt, app), timeout.Token);
             if (!result.Success)
                 _logger.LogWarning("Application telegram notice failed: {Error}", result.ErrorMessage);
         }

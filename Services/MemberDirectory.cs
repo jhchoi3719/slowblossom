@@ -39,6 +39,14 @@ public static class MemberDirectory
             members.Where(m => m.Gender is not ("남" or "여")).ToList());
     }
 
+    // 다른 행사에 신청한 적이 있는 연락처들 ("기존 참가자" 체크가 사실인지 관리자가 확인하는 용도)
+    public static HashSet<string> PhonesWithHistory(IEnumerable<ParticipantApplication> applications, int excludingEventId) =>
+        applications
+            .Where(a => a.EventId != excludingEventId)
+            .Select(a => ApplicationFormValidator.NormalizePhone(a.Phone))
+            .Where(p => p.Length > 0)
+            .ToHashSet();
+
     private static string Key(ParticipantApplication app)
     {
         var phone = ApplicationFormValidator.NormalizePhone(app.Phone);

@@ -21,6 +21,10 @@ Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1");
 Environment.SetEnvironmentVariable("ASPNETCORE_HTTP_PORTS", null);
 Environment.SetEnvironmentVariable("ASPNETCORE_HTTPS_PORTS", null);
 
+// 서버(Render) 기본 언어가 영어라 요일이 (Sat)로 나오던 것을 한국어로 고정한다.
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = new System.Globalization.CultureInfo("ko-KR");
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = new System.Globalization.CultureInfo("ko-KR");
+
 var builder = WebApplication.CreateBuilder(args);
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";

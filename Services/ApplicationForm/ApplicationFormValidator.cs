@@ -107,7 +107,7 @@ public static class ApplicationFormValidator
             return null;
 
         return DateTime.TryParseExact(digits, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
-            && date.Year >= 1900 && date <= DateTime.Today
+            && date.Year >= 1900 && date <= DateTime.Today.AddYears(-19)
             ? digits
             : null;
     }

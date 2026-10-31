@@ -4434,3 +4434,12 @@ select.input {
         grid-template-columns: 1fr;
     }
 }
+
+.returning-unverified-tag {
+    background: #fff4e5;
+    color: #b45309;
+}
+
+.application-doc-link {
+    font-size: 12px;
+}
