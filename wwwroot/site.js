@@ -284,7 +284,14 @@
         if (returning) returning.addEventListener('change', syncReturning);
         syncReturning();
 
+        var dates = document.getElementById('apply-dates');
         form.addEventListener('submit', function (e) {
+            if (dates && !dates.querySelector('input:checked')) {
+                e.preventDefault();
+                alert('참여 가능한 날짜를 1개 이상 선택해 주세요.');
+                dates.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
             if (interests && !form.classList.contains('is-returning') && !interests.querySelector('input:checked')) {
                 e.preventDefault();
                 alert('관심사를 1개 이상 선택해 주세요.');

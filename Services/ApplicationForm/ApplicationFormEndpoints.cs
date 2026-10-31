@@ -29,7 +29,7 @@ public static class ApplicationFormEndpoints
             {
                 var path = context.HttpContext.Request.Path.Value ?? "/apply";
                 var page = path.EndsWith("/submit", StringComparison.Ordinal) ? path[..^"/submit".Length] : "/apply";
-                context.HttpContext.Response.Redirect($"{page}?error=rate");
+                context.HttpContext.Response.Redirect($"{page}?error=rate#apply-errors");
                 return ValueTask.CompletedTask;
             };
         });
@@ -121,7 +121,7 @@ public static class ApplicationFormEndpoints
         if (errors.Count > 0)
         {
             ApplicationDraftStore.Save(context, eventId, input, errors);
-            return Results.Redirect($"/apply/{eventId}?error=1");
+            return Results.Redirect($"/apply/{eventId}?error=1#apply-errors");
         }
 
         var phone = ApplicationFormValidator.NormalizePhone(input.Phone);
@@ -132,7 +132,7 @@ public static class ApplicationFormEndpoints
         if (existingPhones.Any(p => ApplicationFormValidator.NormalizePhone(p) == phone))
         {
             ApplicationDraftStore.Save(context, eventId, input, []);
-            return Results.Redirect($"/apply/{eventId}?error=duplicate");
+            return Results.Redirect($"/apply/{eventId}?error=duplicate#apply-errors");
         }
 
         var saved = new List<string>();
@@ -185,7 +185,7 @@ public static class ApplicationFormEndpoints
                     "disk" => "지금은 사진을 받을 수 없어요. 잠시 후 다시 시도하거나 카카오톡 채널 '싱싱한팜'으로 문의해 주세요.",
                     _ => "사진은 jpg, jpeg, png 파일만 첨부할 수 있어요."
                 }]);
-            return Results.Redirect($"/apply/{eventId}?error=1");
+            return Results.Redirect($"/apply/{eventId}?error=1#apply-errors");
         }
 
         if (evt.Kind == EventKind.DatePoll)

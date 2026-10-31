@@ -33,6 +33,23 @@
                 <p class="subtitle">@_event.FormattedDate</p>
             </header>
 
+            @if (_errors.Count > 0)
+            {
+                <div class="error-text survey-take-error apply-errors" id="apply-errors">
+                    <strong>신청이 아직 접수되지 않았어요. 아래 항목을 확인해 주세요.</strong>
+                    <ul>
+                        @foreach (var error in _errors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                    @if (_draft is not null && !_draft.IsReturning)
+                    {
+                        <p>보안을 위해 첨부했던 사진은 다시 선택해 주세요.</p>
+                    }
+                </div>
+            }
+
             <section class="apply-notice">
                 @{ var noticeBlocks = ApplicationNoticeFormatter.Parse(ApplicationNoticeDefaults.Notice(_event)); }
                 @for (var i = 0; i < noticeBlocks.Count; i++)
@@ -64,23 +81,6 @@
                 }
             </section>
 
-            @if (_errors.Count > 0)
-            {
-                <div class="error-text survey-take-error apply-errors">
-                    <strong>아래 항목을 확인해 주세요.</strong>
-                    <ul>
-                        @foreach (var error in _errors)
-                        {
-                            <li>@error</li>
-                        }
-                    </ul>
-                    @if (_draft is not null && !_draft.IsReturning)
-                    {
-                        <p>보안을 위해 첨부했던 사진은 다시 선택해 주세요.</p>
-                    }
-                </div>
-            }
-
             <form method="post" action="/apply/@EventId/submit" enctype="multipart/form-data"
                   class="survey-take-form apply-form @(_draft?.IsReturning == true ? "is-returning" : "")" id="apply-form">
                 <input type="text" name="website" class="apply-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
@@ -104,8 +104,9 @@
                         </div>
                         <div class="apply-two-col">
                             <input type="text" name="name" class="input" placeholder="홍길동" maxlength="50" required value="@_draft?.Name" />
-                            <input type="text" name="birthDate" class="input apply-new-only" placeholder="19950219" maxlength="10"
-                                   inputmode="numeric" required value="@_draft?.BirthDate" />
+                            <input type="text" name="birthDate" class="input apply-new-only" placeholder="19950219" maxlength="8"
+                                   inputmode="numeric" pattern="[0-9]{8}" title="생년월일 8자리 숫자 (예: 19950219)"
+                                   oninput="this.value=this.value.replace(/\D/g,'')" required value="@_draft?.BirthDate" />
                         </div>
                     </article>
 
@@ -121,8 +122,9 @@
 
                     <article class="survey-take-item">
                         @Head(4, "연락처", "연락처를 입력해 주세요.")
-                        <input type="tel" name="phone" class="input" placeholder="ex) 01012345678" maxlength="13"
-                               inputmode="numeric" autocomplete="tel" required value="@_draft?.Phone" />
+                        <input type="tel" name="phone" class="input" placeholder="ex) 01012345678" maxlength="11"
+                               inputmode="numeric" autocomplete="tel" pattern="[0-9]{10,11}" title="숫자만 10~11자리 (예: 01012345678)"
+                               oninput="this.value=this.value.replace(/\D/g,'')" required value="@_draft?.Phone" />
                     </article>
 
                     <article class="survey-take-item apply-new-only">
@@ -142,7 +144,7 @@
 
                     @if (_event.Kind == EventKind.DatePoll && _event.CandidateDates.Count > 0)
                     {
-                        <article class="survey-take-item">
+                        <article class="survey-take-item apply-dates" id="apply-dates">
                             <div class="survey-take-item-head">
                                 <span class="survey-question-no">📅</span>
                                 <div>
