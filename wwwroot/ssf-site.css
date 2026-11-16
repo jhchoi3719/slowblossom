@@ -1647,3 +1647,60 @@ body.ssf-viewer-open {
         grid-template-columns: 1fr 1fr;
     }
 }
+
+/* 메인 → 연애 서재 배너 */
+.ssf-love-banner {
+    padding: 28px 0 0;
+}
+
+.ssf-love-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px 24px;
+    padding: 22px 24px;
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 92% 10%, rgba(242, 184, 198, 0.5), transparent 45%),
+        #22503d;
+    color: #f7f1e8;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+}
+
+.ssf-love-card:hover {
+    transform: translateY(-2px);
+}
+
+.ssf-love-text {
+    display: grid;
+    gap: 4px;
+}
+
+.ssf-love-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: #f2b8c6;
+}
+
+.ssf-love-text strong {
+    font-size: 17px;
+    word-break: keep-all;
+}
+
+.ssf-love-desc {
+    font-size: 13px;
+    color: rgba(247, 241, 232, 0.75);
+}
+
+.ssf-love-go {
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: #f2b8c6;
+    color: #173628;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+}
