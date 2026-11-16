@@ -1,0 +1,278 @@
+@page "/love"
+@layout Layout.LoveLayout
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Services.LoveLibrary
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IHttpContextAccessor HttpContextAccessor
+@inject AssetVersion Assets
+
+<PageTitle>슬로우블러썸 연애 서재</PageTitle>
+<HeadContent>
+    <meta name="description" content="연애 전·썸·연애 중 고민에 맞춘 슬로우블러썸 연애 전자책" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" />
+    <link rel="stylesheet" href="@Assets.Url("love.css")" />
+</HeadContent>
+
+<div class="love">
+    <header class="love-top">
+        <a href="/love" class="love-brand">SLOW BLOSSOM</a>
+        <a href="@InstagramUrl" class="love-insta" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
+            </svg>
+            <span>@@slowblossom.daegu</span>
+        </a>
+    </header>
+
+    <section class="love-hero">
+        <p class="love-eyebrow">슬로우블러썸 연애 서재</p>
+        <h1>천천히, 그래서<br />더 깊게 피어나는 연애</h1>
+        <p class="love-lead">
+            대구에서 수백 명의 첫 만남을 지켜본 슬로우블러썸이 연애 전, 썸, 연애 중의 고민에 맞춰 쓴 전자책이에요.
+            지금 상황을 짧게 들려주시면 맞는 책을 골라 열어 드려요.
+        </p>
+        @if (_response is null)
+        {
+            <a href="#survey" class="love-cta">내 상황 적고 전자책 열기 <span aria-hidden="true">→</span></a>
+            <p class="love-note">1분이면 충분해요 · 무료 · 이름과 연락처는 받지 않아요</p>
+        }
+        else
+        {
+            <a href="#books" class="love-cta">전자책 보러 가기 <span aria-hidden="true">↓</span></a>
+        }
+        <span class="love-petal love-petal-a" aria-hidden="true"></span>
+        <span class="love-petal love-petal-b" aria-hidden="true"></span>
+    </section>
+
+    <section class="love-section" id="books">
+        <div class="love-section-head">
+            <p class="love-eyebrow">Library</p>
+            <h2>서재</h2>
+        </div>
+
+        @if (_response is not null && Opened)
+        {
+            <div class="love-thanks" role="status">
+                <strong>들려주셔서 고마워요.</strong>
+                <span>@_response.Status · @(_response.Mbti == LoveSurveyOptions.UnknownMbti ? "MBTI 모름" : _response.Mbti)에 맞는 책을 앞에 두었어요.</span>
+            </div>
+        }
+
+        <div class="love-shelf">
+            @foreach (var (book, recommended) in _books)
+            {
+                <article class="love-book">
+                    <div class="love-cover @CoverTone(book)">
+                        <span class="love-cover-series">SLOW BLOSSOM</span>
+                        <span class="love-cover-title">@book.Title</span>
+                        <span class="love-cover-flower" aria-hidden="true"></span>
+                    </div>
+                    <div class="love-book-body">
+                        <div class="love-tags">
+                            @if (recommended)
+                            {
+                                <span class="is-pick">나에게 추천</span>
+                            }
+                            <span>@book.Audience</span>
+                            @if (!string.IsNullOrEmpty(book.Mbti))
+                            {
+                                <span>@book.Mbti</span>
+                            }
+                        </div>
+                        <h3>@book.Title</h3>
+                        @if (!string.IsNullOrWhiteSpace(book.Subtitle))
+                        {
+                            <p>@book.Subtitle</p>
+                        }
+                        @if (_response is null)
+                        {
+                            <a href="#survey" class="love-book-btn is-locked">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                                설문 후 열람
+                            </a>
+                        }
+                        else
+                        {
+                            <a href="/love/book/@book.Id" class="love-book-btn" target="_blank" rel="noopener">읽기</a>
+                        }
+                    </div>
+                </article>
+            }
+
+            <article class="love-book love-book-soon">
+                <div class="love-cover tone-soon">
+                    <span class="love-cover-series">COMING SOON</span>
+                    <span class="love-cover-title">16가지 MBTI<br />유형별 연애 가이드</span>
+                </div>
+                <div class="love-book-body">
+                    <div class="love-tags"><span>준비 중</span></div>
+                    <h3>내 유형만을 위한 한 권</h3>
+                    <p>유형별 전자책을 차례로 열어요. 소식은 인스타그램에서 먼저 알려 드려요.</p>
+                    <a href="@InstagramUrl" class="love-book-btn is-ghost" target="_blank" rel="noopener noreferrer">소식 받기</a>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="love-section" id="survey">
+        @if (_response is not null && _error is null)
+        {
+            <details class="love-again">
+                <summary>다른 고민도 남기고 싶어요</summary>
+                @SurveyForm
+            </details>
+        }
+        else
+        {
+            <div class="love-section-head">
+                <p class="love-eyebrow">Before you read</p>
+                <h2>지금 내 연애 이야기</h2>
+                <p class="love-section-desc">세 가지만 알려 주세요. 적어 주신 고민은 슬로우블러썸 연애상담 AI를 만드는 데 소중히 쓰여요.</p>
+            </div>
+            @SurveyForm
+        }
+    </section>
+
+    <footer class="love-footer">
+        <a href="@InstagramUrl" target="_blank" rel="noopener noreferrer">Instagram @@slowblossom.daegu</a>
+        <span>© SLOW BLOSSOM · 대구 로테이션 소개팅</span>
+    </footer>
+</div>
+
+@code {
+    private const string InstagramUrl = "https://www.instagram.com/slowblossom.daegu/";
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "opened")]
+    public string? OpenedFlag { get; set; }
+
+    private bool Opened => OpenedFlag == "1";
+
+    private LoveSurveyResponse? _response;
+    private List<(EBook Book, bool Recommended)> _books = [];
+    private LoveSurveyInput _draft = new();
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var context = HttpContextAccessor.HttpContext!;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _response = await LoveLibraryEndpoints.FindResponseAsync(context, db);
+        var books = await db.EBooks.AsNoTracking().Where(b => b.IsVisible).ToListAsync();
+        _books = EBookRecommender.Arrange(books, _response);
+
+        if (!string.IsNullOrEmpty(Error))
+        {
+            _error = LoveSurveyValidator.Message(Error);
+            _draft = LoveLibraryEndpoints.TakeDraft(context) ?? new LoveSurveyInput();
+        }
+    }
+
+    private static string CoverTone(EBook book) => book.Audience switch
+    {
+        LoveSurveyOptions.BeforeDating => "tone-green",
+        LoveSurveyOptions.Dating => "tone-pink",
+        _ => "tone-cream"
+    };
+
+    private RenderFragment SurveyForm => @<form method="post" action="/love/survey" class="love-form" data-love-survey>
+        @if (_error is not null)
+        {
+            <p class="love-error" role="alert">@_error</p>
+        }
+        <input type="text" name="website" class="love-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+        <fieldset class="love-q">
+            <legend><span class="love-q-num">01</span>지금 어떤 상황인가요?</legend>
+            <div class="love-status">
+                @foreach (var status in LoveSurveyOptions.Statuses)
+                {
+                    <label class="love-status-card">
+                        <input type="radio" name="status" value="@status" required checked="@(_draft.Status == status)"
+                               data-placeholder="@LoveSurveyOptions.StatusPlaceholder(status)" />
+                        <span class="love-status-title">@status</span>
+                        <span class="love-status-desc">@StatusDesc(status)</span>
+                    </label>
+                }
+            </div>
+        </fieldset>
+
+        <fieldset class="love-q">
+            <legend><span class="love-q-num">02</span>내 MBTI는?</legend>
+            <div class="love-mbti">
+                @foreach (var type in LoveSurveyOptions.MbtiTypes.Append(LoveSurveyOptions.UnknownMbti))
+                {
+                    <label class="love-chip @(type == LoveSurveyOptions.UnknownMbti ? "is-wide" : "")">
+                        <input type="radio" name="mbti" value="@type" required checked="@(_draft.Mbti == type)" />
+                        <span>@type</span>
+                    </label>
+                }
+            </div>
+            <label class="love-inline">
+                <span>상대(애인·썸·관심 있는 사람) MBTI <em>선택</em></span>
+                <select name="partnerMbti" class="love-select">
+                    <option value="">선택 안 함</option>
+                    @foreach (var type in LoveSurveyOptions.MbtiTypes.Append(LoveSurveyOptions.UnknownMbti))
+                    {
+                        <option value="@type" selected="@(_draft.PartnerMbti == type)">@type</option>
+                    }
+                </select>
+            </label>
+        </fieldset>
+
+        <fieldset class="love-q">
+            <legend><span class="love-q-num">03</span>요즘 가장 고민되는 것</legend>
+            <textarea name="concern" class="love-textarea" rows="5" required
+                      minlength="@LoveSurveyOptions.ConcernMinLength" maxlength="@LoveSurveyOptions.ConcernMaxLength"
+                      placeholder="@LoveSurveyOptions.StatusPlaceholder(_draft.Status)">@_draft.Concern</textarea>
+            <p class="love-count"><span data-love-count>@_draft.Concern.Length</span> / @LoveSurveyOptions.ConcernMaxLength</p>
+        </fieldset>
+
+        <details class="love-optional" open="@(_draft.Gender is not null || _draft.AgeRange is not null)">
+            <summary>성별 · 나이대 알려 주기 <em>선택</em></summary>
+            <div class="love-optional-row">
+                <div class="love-seg">
+                    @foreach (var gender in LoveSurveyOptions.Genders)
+                    {
+                        <label class="love-chip">
+                            <input type="radio" name="gender" value="@gender" checked="@(_draft.Gender == gender)" />
+                            <span>@(gender)성</span>
+                        </label>
+                    }
+                </div>
+                <select name="ageRange" class="love-select">
+                    <option value="">나이대</option>
+                    @foreach (var age in LoveSurveyOptions.AgeRanges)
+                    {
+                        <option value="@age" selected="@(_draft.AgeRange == age)">@age</option>
+                    }
+                </select>
+            </div>
+        </details>
+
+        <label class="love-agree">
+            <input type="checkbox" name="agree" required checked="@_draft.Agree" />
+            <span>
+                <strong>[필수] 답변 활용 동의</strong>
+                적어 주신 내용은 이름·연락처 없이 저장되고, 슬로우블러썸 연애상담 AI와 연애 콘텐츠를 만드는 데만 쓰여요.
+            </span>
+        </label>
+
+        <button type="submit" class="love-submit">전자책 열기</button>
+    </form>;
+
+    private static string StatusDesc(string status) => status switch
+    {
+        LoveSurveyOptions.BeforeDating => "소개팅·첫 만남을 준비 중",
+        LoveSurveyOptions.Situationship => "마음은 있는데 아직 애매해요",
+        _ => "함께하는 중, 고민이 생겼어요"
+    };
+}

@@ -13,6 +13,7 @@ using RotationDating.Web.Data;
 using RotationDating.Web.Models;
 using RotationDating.Web.Services;
 using RotationDating.Web.Services.ApplicationForm;
+using RotationDating.Web.Services.LoveLibrary;
 using RotationDating.Web.Services.MailNotification;
 
 // Render free instances hit inotify limits if config/static file watchers are enabled.
@@ -115,6 +116,7 @@ var dbPath = Path.Combine(dataDir, "rotationdating.db");
 builder.Services.AddSingleton(new SiteStorageOptions { RootPath = dataDir });
 builder.Services.AddSingleton<SiteUploadService>();
 builder.Services.AddSingleton<ApplicationFileStore>();
+builder.Services.AddSingleton<EBookStore>();
 builder.Services.AddSingleton(new AssetVersion(builder.Environment.WebRootPath));
 builder.Services.AddScoped<ApplicationNotifier>();
 ApplicationFormEndpoints.AddRateLimit(builder.Services);
@@ -1364,6 +1366,7 @@ app.MapPost("/admin/mail-notify/check-now", async (NaverImapMailMonitor mailMoni
 
 SiteAdminEndpoints.Map(app);
 ApplicationFormEndpoints.Map(app);
+LoveLibraryEndpoints.Map(app);
 
 app.MapRazorComponents<App>();
 
@@ -1387,6 +1390,7 @@ async Task InitializeSiteDataAsync()
         await scope.ServiceProvider.GetRequiredService<ParticipantConsentService>().EnsureSeededAsync(db);
         await scope.ServiceProvider.GetRequiredService<SiteContentService>().EnsureSeededAsync();
         await scope.ServiceProvider.GetRequiredService<SiteAdminAuthService>().EnsureSeededAsync();
+        await scope.ServiceProvider.GetRequiredService<EBookStore>().SeedAsync(db, Path.Combine(AppContext.BaseDirectory, "EBookSeed"));
         app.Logger.LogInformation("Database initialization completed.");
     }
     catch (Exception ex)

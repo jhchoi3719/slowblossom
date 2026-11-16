@@ -128,6 +128,38 @@ public static class DatabaseInitializer
         await MigrateSurveyTablesAsync(db);
         await MigrateConsentSettingsAsync(db);
         await MigrateSiteContentTablesAsync(db);
+        await MigrateLoveLibraryTablesAsync(db);
+    }
+
+    private static async Task MigrateLoveLibraryTablesAsync(AppDbContext db)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS LoveSurveyResponses (
+                Id INTEGER NOT NULL CONSTRAINT PK_LoveSurveyResponses PRIMARY KEY AUTOINCREMENT,
+                Status TEXT NOT NULL,
+                Mbti TEXT NOT NULL,
+                PartnerMbti TEXT NULL,
+                Gender TEXT NULL,
+                AgeRange TEXT NULL,
+                Concern TEXT NOT NULL,
+                Token TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_LoveSurveyResponses_Token ON LoveSurveyResponses (Token);
+            CREATE INDEX IF NOT EXISTS IX_LoveSurveyResponses_CreatedAt ON LoveSurveyResponses (CreatedAt);
+            CREATE TABLE IF NOT EXISTS EBooks (
+                Id INTEGER NOT NULL CONSTRAINT PK_EBooks PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL,
+                Subtitle TEXT NULL,
+                Audience TEXT NOT NULL,
+                Mbti TEXT NULL,
+                FileName TEXT NOT NULL,
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                IsVisible INTEGER NOT NULL DEFAULT 1,
+                CreatedAt TEXT NOT NULL
+            );
+            """;
+        await db.Database.ExecuteSqlRawAsync(sql);
     }
 
     private static async Task MigrateConsentSettingsAsync(AppDbContext db)

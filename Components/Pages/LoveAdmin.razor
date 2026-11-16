@@ -1,0 +1,252 @@
+@page "/admin/love"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RotationDating.Web.Services.LoveLibrary
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>연애 서재 관리</PageTitle>
+
+<div class="page">
+    <header class="page-header">
+        <a href="/home" class="back-link">← 메뉴</a>
+        <h1>연애 서재</h1>
+        <p class="subtitle">
+            공개 주소 <a href="/love" target="_blank" rel="noopener">slowblossom.onrender.com/love</a>
+            · 설문을 마친 사람만 전자책을 열 수 있어요
+        </p>
+    </header>
+
+    <div class="member-toolbar">
+        <a class="btn btn-sm @(IsBooks ? "btn-secondary" : "btn-primary")" href="/admin/love">설문 답변 @_total</a>
+        <a class="btn btn-sm @(IsBooks ? "btn-primary" : "btn-secondary")" href="/admin/love?tab=books">전자책 @_books.Count</a>
+    </div>
+
+    @if (!IsBooks)
+    {
+        <section class="love-admin-stats">
+            @foreach (var status in LoveSurveyOptions.Statuses)
+            {
+                <a class="love-admin-stat @(Status == status ? "is-active" : "")" href="@Url(status, Mbti, Q)">
+                    <span>@status</span>
+                    <strong>@(_statusCounts.GetValueOrDefault(status))</strong>
+                </a>
+            }
+        </section>
+
+        @if (_topMbti.Count > 0)
+        {
+            <div class="love-admin-mbti">
+                <span class="member-meta">많이 응답한 MBTI</span>
+                @foreach (var (type, count) in _topMbti)
+                {
+                    <a class="love-admin-pill @(Mbti == type ? "is-active" : "")" href="@Url(Status, Mbti == type ? null : type, Q)">@type @count</a>
+                }
+            </div>
+        }
+
+        <div class="member-toolbar">
+            <form method="get" action="/admin/love" class="member-search">
+                @if (!string.IsNullOrEmpty(Status))
+                {
+                    <input type="hidden" name="status" value="@Status" />
+                }
+                @if (!string.IsNullOrEmpty(Mbti))
+                {
+                    <input type="hidden" name="mbti" value="@Mbti" />
+                }
+                <input type="search" name="q" class="input" value="@Q" placeholder="고민 내용 검색 (예: 연락, 다툼)" />
+                <button type="submit" class="btn btn-sm btn-secondary">검색</button>
+            </form>
+            @if (!string.IsNullOrEmpty(Status) || !string.IsNullOrEmpty(Mbti) || !string.IsNullOrEmpty(Q))
+            {
+                <a class="btn btn-sm btn-secondary" href="/admin/love">필터 해제</a>
+            }
+            <a class="btn btn-sm btn-primary" href="/admin/love/export">엑셀 받기</a>
+        </div>
+
+        @if (_responses.Count == 0)
+        {
+            <p class="member-meta">아직 답변이 없어요.</p>
+        }
+
+        <div class="love-admin-list">
+            @foreach (var r in _responses)
+            {
+                <article class="member-card love-admin-card">
+                    <div class="member-card-head">
+                        <span class="love-admin-status">@r.Status</span>
+                        <span class="member-name">@r.Mbti</span>
+                        @if (!string.IsNullOrEmpty(r.PartnerMbti))
+                        {
+                            <span class="member-meta">상대 @r.PartnerMbti</span>
+                        }
+                        @if (r.Gender is not null || r.AgeRange is not null)
+                        {
+                            <span class="member-meta">@(r.Gender is null ? "" : r.Gender + "성") @r.AgeRange</span>
+                        }
+                        <span class="member-meta love-admin-time">@r.CreatedAt.ToLocalTime().ToString("M/d HH:mm")</span>
+                    </div>
+                    <p class="love-admin-concern">@r.Concern</p>
+                    <form method="post" action="/admin/love/delete" onsubmit="return confirm('이 답변을 삭제할까요?');">
+                        <input type="hidden" name="id" value="@r.Id" />
+                        <button type="submit" class="btn btn-sm btn-secondary">삭제</button>
+                    </form>
+                </article>
+            }
+        </div>
+        @if (_filtered > _responses.Count)
+        {
+            <p class="member-meta">최근 @(_responses.Count)개만 보여요. 전체는 엑셀로 받아 주세요.</p>
+        }
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <p class="alert alert-error">@(Error == "title" ? "책 제목을 적어 주세요." : "PDF 파일을 골라 주세요. (60MB까지)")</p>
+        }
+        @if (Saved == "1")
+        {
+            <p class="alert alert-success">저장했어요.</p>
+        }
+
+        <section class="card love-admin-form">
+            <h2>새 전자책 올리기</h2>
+            @BookForm(null)
+        </section>
+
+        @foreach (var book in _books)
+        {
+            <section class="card love-admin-form @(book.IsVisible ? "" : "is-hidden")">
+                <div class="love-admin-book-head">
+                    <h2>@book.Title</h2>
+                    <span class="member-meta">@(book.IsVisible ? "공개 중" : "숨김") · 순서 @book.SortOrder</span>
+                </div>
+                @BookForm(book)
+                <div class="love-admin-actions">
+                    <a class="btn btn-sm btn-secondary" href="/love/book/@book.Id" target="_blank" rel="noopener">PDF 보기</a>
+                    <form method="post" action="/admin/ebooks/toggle">
+                        <input type="hidden" name="id" value="@book.Id" />
+                        <button type="submit" class="btn btn-sm btn-secondary">@(book.IsVisible ? "숨기기" : "공개하기")</button>
+                    </form>
+                    <form method="post" action="/admin/ebooks/delete" onsubmit="return confirm('이 전자책을 서재에서 뺄까요? (파일은 서버 보관함으로 옮겨져요)');">
+                        <input type="hidden" name="id" value="@book.Id" />
+                        <button type="submit" class="btn btn-sm btn-secondary">삭제</button>
+                    </form>
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private const int PageSize = 200;
+
+    [SupplyParameterFromQuery] public string? Tab { get; set; }
+    [SupplyParameterFromQuery] public string? Status { get; set; }
+    [SupplyParameterFromQuery] public string? Mbti { get; set; }
+    [SupplyParameterFromQuery] public string? Q { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public string? Saved { get; set; }
+
+    private bool IsBooks => Tab == "books";
+
+    private int _total;
+    private int _filtered;
+    private Dictionary<string, int> _statusCounts = new();
+    private List<(string Type, int Count)> _topMbti = [];
+    private List<LoveSurveyResponse> _responses = [];
+    private List<EBook> _books = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _books = await db.EBooks.AsNoTracking().OrderBy(b => b.SortOrder).ThenBy(b => b.Id).ToListAsync();
+        _total = await db.LoveSurveyResponses.CountAsync();
+        if (IsBooks)
+            return;
+
+        _statusCounts = await db.LoveSurveyResponses
+            .GroupBy(r => r.Status)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+        var mbti = await db.LoveSurveyResponses
+            .Where(r => r.Mbti != LoveSurveyOptions.UnknownMbti)
+            .GroupBy(r => r.Mbti)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(8)
+            .ToListAsync();
+        _topMbti = mbti.Select(x => (x.Key, x.Count)).ToList();
+
+        var query = db.LoveSurveyResponses.AsNoTracking();
+        if (!string.IsNullOrEmpty(Status))
+            query = query.Where(r => r.Status == Status);
+        if (!string.IsNullOrEmpty(Mbti))
+            query = query.Where(r => r.Mbti == Mbti);
+        if (!string.IsNullOrWhiteSpace(Q))
+        {
+            var term = Q.Trim();
+            query = query.Where(r => r.Concern.Contains(term));
+        }
+
+        _filtered = await query.CountAsync();
+        _responses = await query.OrderByDescending(r => r.Id).Take(PageSize).ToListAsync();
+    }
+
+    private static string Url(string? status, string? mbti, string? q)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(status)) parts.Add($"status={Uri.EscapeDataString(status)}");
+        if (!string.IsNullOrEmpty(mbti)) parts.Add($"mbti={Uri.EscapeDataString(mbti)}");
+        if (!string.IsNullOrWhiteSpace(q)) parts.Add($"q={Uri.EscapeDataString(q)}");
+        return parts.Count == 0 ? "/admin/love" : $"/admin/love?{string.Join("&", parts)}";
+    }
+
+    private static RenderFragment BookForm(EBook? book) => @<form method="post" action="/admin/ebooks/save" enctype="multipart/form-data" class="love-admin-fields">
+        @if (book is not null)
+        {
+            <input type="hidden" name="id" value="@book.Id" />
+        }
+        <label class="field">
+            <span>제목</span>
+            <input class="input" name="title" value="@book?.Title" maxlength="100" required />
+        </label>
+        <label class="field">
+            <span>한 줄 소개</span>
+            <input class="input" name="subtitle" value="@book?.Subtitle" maxlength="200" />
+        </label>
+        <div class="love-admin-row">
+            <label class="field">
+                <span>대상</span>
+                <select class="input" name="audience">
+                    @foreach (var audience in LoveSurveyOptions.Audiences)
+                    {
+                        <option value="@audience" selected="@((book?.Audience ?? LoveSurveyOptions.Common) == audience)">@audience</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span>MBTI 전용</span>
+                <select class="input" name="mbti">
+                    <option value="">모든 유형</option>
+                    @foreach (var type in LoveSurveyOptions.MbtiTypes)
+                    {
+                        <option value="@type" selected="@(book?.Mbti == type)">@type</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span>순서</span>
+                <input class="input" type="number" name="sortOrder" value="@(book?.SortOrder)" />
+            </label>
+        </div>
+        <label class="field">
+            <span>@(book is null ? "PDF 파일" : "PDF 바꾸기 (선택)")</span>
+            <input class="input" type="file" name="file" accept="application/pdf,.pdf" required="@(book is null)" />
+        </label>
+        <button type="submit" class="btn btn-primary">@(book is null ? "올리기" : "저장")</button>
+    </form>;
+}

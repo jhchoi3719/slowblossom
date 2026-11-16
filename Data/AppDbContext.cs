@@ -26,9 +26,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SiteFaqItem> SiteFaqItems => Set<SiteFaqItem>();
     public DbSet<SitePost> SitePosts => Set<SitePost>();
     public DbSet<SiteAboutPerson> SiteAboutPeople => Set<SiteAboutPerson>();
+    public DbSet<LoveSurveyResponse> LoveSurveyResponses => Set<LoveSurveyResponse>();
+    public DbSet<EBook> EBooks => Set<EBook>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<LoveSurveyResponse>(entity =>
+        {
+            entity.ToTable("LoveSurveyResponses");
+            entity.HasIndex(e => e.Token);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        modelBuilder.Entity<EBook>(entity => entity.ToTable("EBooks"));
+
         modelBuilder.Entity<Event>(entity =>
         {
             entity.Property(e => e.Title).HasMaxLength(200).IsRequired();

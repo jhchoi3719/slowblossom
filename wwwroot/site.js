@@ -328,7 +328,43 @@
         });
     }
 
+    // /love 연애 설문: 상황에 맞는 예시 문구, 글자 수, 중복 제출 막기
+    function initLoveSurvey() {
+        document.querySelectorAll('[data-love-survey]').forEach(function (form) {
+            var textarea = form.querySelector('textarea[name="concern"]');
+            var count = form.querySelector('[data-love-count]');
+            var submit = form.querySelector('button[type="submit"]');
+            if (!textarea) return;
+
+            form.querySelectorAll('input[name="status"]').forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    if (radio.checked && radio.dataset.placeholder)
+                        textarea.placeholder = radio.dataset.placeholder;
+                });
+            });
+
+            textarea.addEventListener('input', function () {
+                if (count) count.textContent = textarea.value.length;
+            });
+
+            form.addEventListener('submit', function () {
+                if (submit) {
+                    submit.disabled = true;
+                    submit.textContent = '여는 중...';
+                }
+            });
+        });
+
+        window.addEventListener('pageshow', function () {
+            document.querySelectorAll('[data-love-survey] button[type="submit"]').forEach(function (b) {
+                b.disabled = false;
+                b.textContent = '전자책 열기';
+            });
+        });
+    }
+
     function boot() {
+        initLoveSurvey();
         initSiteHeader();
         initGalleryTabs();
         initGalleryViewer();

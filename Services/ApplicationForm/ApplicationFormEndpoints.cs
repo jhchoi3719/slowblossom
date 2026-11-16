@@ -41,6 +41,11 @@ public static class ApplicationFormEndpoints
             options.OnRejected = (context, _) =>
             {
                 var path = context.HttpContext.Request.Path.Value ?? "/apply";
+                if (path.StartsWith("/love", StringComparison.Ordinal))
+                {
+                    context.HttpContext.Response.Redirect("/love?error=rate#survey");
+                    return ValueTask.CompletedTask;
+                }
                 var page = path.EndsWith("/submit", StringComparison.Ordinal) ? path[..^"/submit".Length] : "/apply";
                 context.HttpContext.Response.Redirect($"{page}?error=rate#apply-errors");
                 return ValueTask.CompletedTask;
