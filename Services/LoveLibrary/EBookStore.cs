@@ -56,37 +56,75 @@ public sealed class EBookStore
         File.Move(path, Path.Combine(trash, $"{DateTime.UtcNow:yyyyMMddHHmmss}_{fileName}"), overwrite: true);
     }
 
-    // 처음 배포할 때 전자책이 하나도 없으면 저장소에 함께 넣어 둔 PDF로 채운다.
+    private static readonly (string File, string Title, string Subtitle, string Audience)[] Seeds =
+    [
+        ("love-start-guide.pdf", "연애 시작 가이드", "첫 만남부터 연애 초기 3개월까지, 남자 마음 · 여자 마음", LoveSurveyOptions.BeforeDating),
+        ("mbti-love-guide.pdf", "MBTI 연애 가이드", "\"그 사람은 왜 저럴까\"를 16가지 유형으로 읽어요", LoveSurveyOptions.Common)
+    ];
+
+    // 저장소에 함께 넣어 둔 PDF로 서재를 채운다.
+    // - 전자책이 하나도 없으면 새로 만든다.
+    // - 저장소의 PDF가 바뀌었으면(배포로 새 버전이 올라오면) 같은 제목의 책 파일을 한 번만 바꿔 준다.
+    //   관리자 화면에서 직접 바꾼 파일은, 저장소 PDF가 다시 바뀌기 전까지 그대로 둔다.
     public async Task SeedAsync(AppDbContext db, string seedDirectory)
     {
-        if (await db.EBooks.AnyAsync() || !Directory.Exists(seedDirectory))
+        if (!Directory.Exists(seedDirectory))
             return;
 
-        var seeds = new[]
-        {
-            (File: "love-start-guide.pdf", Title: "연애 시작 가이드", Subtitle: "첫 만남부터 연애 초기 3개월까지, 남자 마음 · 여자 마음", Audience: LoveSurveyOptions.BeforeDating),
-            (File: "mbti-love-guide.pdf", Title: "MBTI 연애 가이드", Subtitle: "\"그 사람은 왜 저럴까\"를 16가지 유형으로 읽어요", Audience: LoveSurveyOptions.Common)
-        };
-
+        var isEmpty = !await db.EBooks.AnyAsync();
         var order = 0;
-        foreach (var seed in seeds)
+        foreach (var seed in Seeds)
         {
             var source = Path.Combine(seedDirectory, seed.File);
             if (!File.Exists(source))
                 continue;
 
-            var name = $"{Guid.NewGuid():N}.pdf";
-            File.Copy(source, Path.Combine(_directory, name));
-            db.EBooks.Add(new EBook
+            var hash = await HashAsync(source);
+            var key = $"ebook.seed.{seed.File}";
+            var applied = await db.SiteSettings.FirstOrDefaultAsync(s => s.Key == key);
+
+            if (isEmpty)
             {
-                Title = seed.Title,
-                Subtitle = seed.Subtitle,
-                Audience = seed.Audience,
-                FileName = name,
-                SortOrder = order++
-            });
+                db.EBooks.Add(new EBook
+                {
+                    Title = seed.Title,
+                    Subtitle = seed.Subtitle,
+                    Audience = seed.Audience,
+                    FileName = CopyIn(source),
+                    SortOrder = order++
+                });
+            }
+            // 기록이 없으면 이 기능이 생기기 전에 넣은 첫 버전이므로 새 버전으로 바꾼다.
+            else if (applied is null || applied.Value != hash)
+            {
+                var book = await db.EBooks.FirstOrDefaultAsync(b => b.Title == seed.Title);
+                if (book is not null)
+                {
+                    var old = book.FileName;
+                    book.FileName = CopyIn(source);
+                    Delete(old);
+                }
+            }
+
+            if (applied is null)
+                db.SiteSettings.Add(new SiteSetting { Key = key, Value = hash });
+            else
+                applied.Value = hash;
         }
 
         await db.SaveChangesAsync();
+    }
+
+    private string CopyIn(string source)
+    {
+        var name = $"{Guid.NewGuid():N}.pdf";
+        File.Copy(source, Path.Combine(_directory, name));
+        return name;
+    }
+
+    private static async Task<string> HashAsync(string path)
+    {
+        await using var stream = File.OpenRead(path);
+        return Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(stream));
     }
 }
