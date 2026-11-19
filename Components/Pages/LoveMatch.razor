@@ -36,19 +36,52 @@
         </section>
 
         <form id="match-form" class="match-card match-form" novalidate>
-            <fieldset>
-                <legend>나</legend>
-                <label>이름<input name="me" maxlength="10" required autocomplete="off" placeholder="예: 효정" /></label>
-                <label>MBTI<select name="myType" required>@TypeOptions</select></label>
-            </fieldset>
-            <fieldset>
-                <legend>궁합이 궁금한 사람</legend>
-                <label>이름<input name="you" maxlength="10" required autocomplete="off" placeholder="예: 민수" /></label>
-                <label>MBTI<select name="yourType" required>@TypeOptions</select></label>
-            </fieldset>
-            <button type="submit" class="love-cta">궁합 보기 <span aria-hidden="true">→</span></button>
-            <p class="love-note">입력한 이름은 저장하거나 보내지 않아요. 이 화면에서만 쓰여요.</p>
+            <div class="match-progress" aria-hidden="true"><span></span></div>
+
+            <div class="match-step" data-step="0">
+                <p class="match-q-no">1 / 5</p>
+                <h2>당신의 이름은?</h2>
+                <input name="me" maxlength="10" required autocomplete="off" placeholder="예: 효정" aria-label="내 이름" />
+                <button type="button" class="love-cta match-next">다음 <span aria-hidden="true">→</span></button>
+            </div>
+
+            <div class="match-step" data-step="1" hidden>
+                <p class="match-q-no">2 / 5</p>
+                <h2><span data-name="me"></span>님의 MBTI는?</h2>
+                <div class="match-types">@TypeRadios("myType")</div>
+            </div>
+
+            <div class="match-step" data-step="2" hidden>
+                <p class="match-q-no">3 / 5</p>
+                <h2>궁합이 궁금한 그 사람의 이름은?</h2>
+                <input name="you" maxlength="10" required autocomplete="off" placeholder="예: 민수" aria-label="그 사람 이름" />
+                <button type="button" class="love-cta match-next">다음 <span aria-hidden="true">→</span></button>
+            </div>
+
+            <div class="match-step" data-step="3" hidden>
+                <p class="match-q-no">4 / 5</p>
+                <h2><span data-name="you"></span>님의 MBTI는?</h2>
+                <div class="match-types">@TypeRadios("yourType")</div>
+            </div>
+
+            <div class="match-step" data-step="4" hidden>
+                <p class="match-q-no">5 / 5</p>
+                <h2>지금 두 사람은<br />어떤 사이예요?</h2>
+                <div class="match-stages">
+                    <label><input type="radio" name="stage" value="before" /><span><b>아직 잘 모르는 사이</b><small>곧 만나거나, 막 알게 됐어요</small></span></label>
+                    <label><input type="radio" name="stage" value="some" /><span><b>썸 타는 중</b><small>서로 호감은 있는데 아직 애매해요</small></span></label>
+                    <label><input type="radio" name="stage" value="dating" /><span><b>연애 중</b><small>이미 사귀고 있어요</small></span></label>
+                </div>
+            </div>
+
+            <button type="button" class="match-back" hidden>← 이전</button>
+            <p class="match-privacy">입력한 이름은 저장하거나 보내지 않아요. 이 화면에서만 쓰여요.</p>
         </form>
+
+        <div id="match-loading" class="match-card match-loading" hidden aria-live="polite">
+            <div class="match-loading-heart" aria-hidden="true">♥</div>
+            <p></p>
+        </div>
 
         <section id="match-result" class="match-result" aria-live="polite" hidden></section>
     </main>
@@ -64,18 +97,20 @@
         "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"
     ];
 
-    private static readonly RenderFragment TypeOptions = builder =>
+    private static RenderFragment TypeRadios(string name) => builder =>
     {
         var seq = 0;
-        builder.OpenElement(seq++, "option");
-        builder.AddAttribute(seq++, "value", "");
-        builder.AddContent(seq++, "선택해 주세요");
-        builder.CloseElement();
         foreach (var t in Types)
         {
-            builder.OpenElement(seq++, "option");
+            builder.OpenElement(seq++, "label");
+            builder.OpenElement(seq++, "input");
+            builder.AddAttribute(seq++, "type", "radio");
+            builder.AddAttribute(seq++, "name", name);
             builder.AddAttribute(seq++, "value", t);
+            builder.CloseElement();
+            builder.OpenElement(seq++, "span");
             builder.AddContent(seq++, t);
+            builder.CloseElement();
             builder.CloseElement();
         }
     };
