@@ -15,3 +15,7 @@ certs/
 # 로컬 실행 시 저장되는 업로드/신청서 서류
 private/
 uploads/
+
+# 전자책 빌드 결과물 (EBookSource/build.py)
+EBookSource/out/
+__pycache__/

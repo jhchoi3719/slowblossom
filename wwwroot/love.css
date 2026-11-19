@@ -753,3 +753,45 @@
     font-weight: 600;
     color: var(--l-green);
 }
+
+/* ── MBTI 궁합 테스트 (/love/match) ─────────────────────────────── */
+.match { max-width: 640px; margin: 0 auto; padding: 0 16px 64px; }
+.match .match-hero { margin: 8px 0 0; padding: 48px 24px 56px; }
+.match-hero .love-lead { margin-bottom: 0; }
+.match-card { margin-top: 16px; padding: 22px 20px; border: 1px solid var(--l-line); border-radius: 20px; background: #fff; word-break: keep-all; }
+.match-form { margin-top: -28px; position: relative; box-shadow: 0 16px 40px rgba(23, 54, 40, 0.1); }
+.match-form fieldset { margin: 0 0 18px; padding: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.match-form legend { margin-bottom: 8px; font-family: var(--l-serif); font-size: 18px; font-weight: 700; }
+.match-form label { display: grid; gap: 6px; font-size: 13px; color: var(--l-muted); }
+.match-form input, .match-form select { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--l-line); border-radius: 12px; background: var(--l-paper); font: inherit; font-size: 16px; color: var(--l-green-ink); }
+.match-form input:focus, .match-form select:focus { outline: 2px solid var(--l-pink-deep); outline-offset: 1px; }
+.match-form .love-cta { width: 100%; justify-content: center; border: 0; cursor: pointer; background: var(--l-green); color: var(--l-cream) !important; }
+.match-form .love-note { text-align: center; color: var(--l-muted); }
+.match-result { scroll-margin-top: 12px; }
+.match-score-card { text-align: center; background: linear-gradient(160deg, var(--l-green) 0%, #1b4232 100%); color: var(--l-cream); border: 0; }
+.match-pair { margin: 0; font-size: 15px; font-weight: 600; }
+.match-pair span { font-size: 12px; letter-spacing: 0.08em; color: var(--l-pink); }
+.match-pair i { font-style: normal; color: var(--l-pink); margin: 0 6px; }
+.match-score { margin: 10px 0 6px; font-family: var(--l-serif); line-height: 1; }
+.match-score b { font-size: 72px; }
+.match-score small { font-size: 22px; margin-left: 4px; }
+.match-bar { height: 8px; margin: 0 auto 18px; max-width: 280px; border-radius: 99px; background: rgba(247, 241, 232, 0.2); overflow: hidden; }
+.match-bar span { display: block; height: 100%; border-radius: inherit; background: var(--l-pink); }
+.match-score-card h2 { margin: 0 0 8px; font-family: var(--l-serif); font-size: 21px; line-height: 1.4; }
+.match-score-card p:last-child { margin: 0; font-size: 14px; color: rgba(247, 241, 232, 0.85); }
+.match-label { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; color: var(--l-pink-deep); }
+.match-card h3 { margin: 14px 0 4px; font-family: var(--l-serif); font-size: 18px; }
+.match-card h3:first-of-type { margin-top: 0; }
+.match-card p { margin: 0 0 10px; font-size: 15px; }
+.match-note { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #fff6f8; font-size: 14px; }
+.match-effort { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--l-line); }
+.match-effort:first-of-type { border-top: 0; padding-top: 4px; }
+.match-effort > span { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--l-pink); font-weight: 700; }
+.match-effort h3 { margin: 2px 0 4px !important; font-size: 16px; }
+.match-effort p { margin: 0; }
+.match-cta { text-align: center; background: var(--l-cream); }
+.match-cta .love-cta { box-shadow: none; }
+.match-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+.match-links a, .match-links button { padding: 8px 14px; border: 1px solid var(--l-line); border-radius: 99px; background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: var(--l-green-ink); cursor: pointer; }
+.match-fine { margin: 18px 4px 0; font-size: 12px; line-height: 1.6; color: var(--l-muted); text-align: center; }
+@media (max-width: 380px) { .match-form fieldset { grid-template-columns: 1fr; } }

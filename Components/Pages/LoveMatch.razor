@@ -1,0 +1,82 @@
+@page "/love/match"
+@layout Layout.LoveLayout
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@inject AssetVersion Assets
+
+<PageTitle>MBTI 연애 궁합 테스트 · 슬로우블러썸</PageTitle>
+<HeadContent>
+    <meta name="description" content="나와 그 사람의 이름과 MBTI로 보는 연애 궁합 점수, 연애 스타일, 관계를 위한 노력 2가지" />
+    <meta property="og:title" content="MBTI 연애 궁합 테스트 · 슬로우블러썸" />
+    <meta property="og:description" content="이름과 MBTI만 넣으면 두 사람의 궁합 점수와 연애 스타일을 알려드려요." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" />
+    <link rel="stylesheet" href="@Assets.Url("love.css")" />
+</HeadContent>
+
+<div class="love">
+    <header class="love-top">
+        <a href="/love" class="love-brand">SLOW BLOSSOM</a>
+        <a href="https://www.instagram.com/slowblossom.daegu/" class="love-insta" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
+            </svg>
+            <span>@@slowblossom.daegu</span>
+        </a>
+    </header>
+
+    <main class="match">
+        <section class="love-hero match-hero">
+            <p class="love-eyebrow">MBTI 연애 궁합</p>
+            <h1>우리 둘,<br />얼마나 잘 맞을까?</h1>
+            <p class="love-lead">이름과 MBTI만 넣으면 두 사람의 궁합 점수와 연애 스타일, 관계를 위해 해 볼 노력 2가지를 알려드려요.</p>
+        </section>
+
+        <form id="match-form" class="match-card match-form" novalidate>
+            <fieldset>
+                <legend>나</legend>
+                <label>이름<input name="me" maxlength="10" required autocomplete="off" placeholder="예: 효정" /></label>
+                <label>MBTI<select name="myType" required>@TypeOptions</select></label>
+            </fieldset>
+            <fieldset>
+                <legend>궁합이 궁금한 사람</legend>
+                <label>이름<input name="you" maxlength="10" required autocomplete="off" placeholder="예: 민수" /></label>
+                <label>MBTI<select name="yourType" required>@TypeOptions</select></label>
+            </fieldset>
+            <button type="submit" class="love-cta">궁합 보기 <span aria-hidden="true">→</span></button>
+            <p class="love-note">입력한 이름은 저장하거나 보내지 않아요. 이 화면에서만 쓰여요.</p>
+        </form>
+
+        <section id="match-result" class="match-result" aria-live="polite" hidden></section>
+    </main>
+</div>
+
+<script src="@Assets.Url("mbti-match-data.js")"></script>
+<script src="@Assets.Url("mbti-match.js")"></script>
+
+@code {
+    private static readonly string[] Types =
+    [
+        "INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP",
+        "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"
+    ];
+
+    private static readonly RenderFragment TypeOptions = builder =>
+    {
+        var seq = 0;
+        builder.OpenElement(seq++, "option");
+        builder.AddAttribute(seq++, "value", "");
+        builder.AddContent(seq++, "선택해 주세요");
+        builder.CloseElement();
+        foreach (var t in Types)
+        {
+            builder.OpenElement(seq++, "option");
+            builder.AddAttribute(seq++, "value", t);
+            builder.AddContent(seq++, t);
+            builder.CloseElement();
+        }
+    };
+}
