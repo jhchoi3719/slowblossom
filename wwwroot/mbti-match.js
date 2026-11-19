@@ -131,11 +131,12 @@
         const num = out.querySelector("[data-target]");
         num.textContent = sc; // 애니메이션이 돌지 않는 환경에서도 점수는 보이게
         const start = performance.now();
-        (function tick(now) {
+        function tick(now) {
             const k = Math.min(1, (now - start) / 900);
             num.textContent = Math.round(sc * (1 - Math.pow(1 - k, 3)));
             if (k < 1) requestAnimationFrame(tick);
-        })(start);
+        }
+        requestAnimationFrame(tick);
         document.getElementById("match-again").addEventListener("click", () => {
             out.hidden = true;
             form.hidden = false;
